@@ -14,6 +14,7 @@ from fastapi import FastAPI
 from httpx import AsyncClient, HTTPStatusError
 from sqlmodel import SQLModel, Session, create_engine
 from sqlmodel.pool import StaticPool
+from unittest.mock import AsyncMock
 
 from app.config import Settings
 from app.main import create_app
@@ -276,6 +277,100 @@ def test_user(test_db, test_settings) -> User:
     return user
 
 @pytest.fixture
-def mock_kite_client(mocker):
-    """Mock Kite client."""
-    return mocker.patch('app.print.routes.KiteClient')
+def test_assets(test_db, test_user) -> List[Asset]:
+    """Create test photo assets with known IDs and attributes."""
+    assets = []
+    for i in range(10):  # Create 10 test assets
+        asset = Asset(
+            item_id=f"photo_{i}",
+            user_id=test_user.id,
+            path=f"/drive/root:/Photos/photo_{i}.jpg",
+            mime="image/jpeg",
+            taken_at=(datetime.now(UTC) - timedelta(days=i)).replace(tzinfo=None),  # Make naive
+            width=1920,
+            height=1080,
+            last_seen=(datetime.now(UTC)).replace(tzinfo=None)  # Make naive
+        )
+        test_db.add(asset)
+        assets.append(asset)
+    
+    test_db.commit()
+    for asset in assets:
+        test_db.refresh(asset)
+    return assets
+
+@pytest.fixture
+def test_scores(test_db, test_assets) -> List[Score]:
+    """Create test scores with descending values."""
+    scores = []
+    for i, asset in enumerate(test_assets):
+        # Calculate component scores that will result in desired final score
+        base_score = 0.95 - (i * 0.05)  # Descending: 0.95, 0.90, 0.85, 0.80...
+        sharpness = min(1.0, base_score + 0.05)  # Slightly higher than final score
+        exposure = min(1.0, base_score + 0.03)  # Slightly higher than final score
+        
+        score = Score(
+            asset_item_id=asset.item_id,
+            sharpness=sharpness,
+            exposure=exposure,
+            final_score=base_score,  # Descending from 0.95
+            rationale=["Good lighting", "Sharp focus"] if base_score > 0.80 else ["Acceptable quality"],
+            scored_at=datetime.now(UTC)  # Use timezone-aware datetime
+        )
+        test_db.add(score)
+        scores.append(score)
+    
+    test_db.commit()
+    for score in scores:
+        test_db.refresh(score)
+    return scores
+
+@pytest.fixture
+def test_shortlist(test_db, test_user, test_assets, test_scores) -> Shortlist:
+    """Create test shortlist with pre-selected items."""
+    # Create shortlist with top 5 photos by score
+    top_assets = sorted(
+        zip(test_assets, test_scores),
+        key=lambda pair: pair[1].final_score,
+        reverse=True
+    )[:5]
+    
+    items = [
+        ShortlistItem(
+            asset_item_id=asset.item_id,
+            rank=i,
+            selected=True  # All initially selected
+        )
+        for i, (asset, _) in enumerate(top_assets)
+    ]
+    
+    shortlist = Shortlist(
+        user_id=test_user.id,
+        size=5,
+        items=items,
+        status=ShortlistStatus.DRAFT
+    )
+    
+    test_db.add(shortlist)
+    test_db.commit()
+    test_db.refresh(shortlist)
+    return shortlist
+
+@pytest.fixture
+def mock_kite_client(mocker) -> AsyncMock:
+    """Mock KiteClient for testing."""
+    async def mock_create_order(order, db=None):
+        """Mock create_order that updates the order object."""
+        order.provider_order_id = "ko_test_123"
+        order.status = PrintOrderStatus.SUBMITTED
+        if db:
+            db.add(order)
+        return {
+            "order_id": "ko_test_123",
+            "status": "submitted"
+        }
+    
+    mock = AsyncMock()
+    mock.return_value.create_order = mock_create_order
+    mocker.patch("app.print.routes.KiteClient", mock)
+    return mock
