@@ -12,6 +12,8 @@ dependencies = [
     "pydantic",
     "pydantic-settings",
     "python-dotenv",
+    "SQLAlchemy>=2.0",
+    "typing-extensions",
 ]
 
 [project.optional-dependencies]
@@ -51,8 +53,8 @@ skip-string-normalization = false
 [tool.mypy]
 python_version = "3.12"
 warn_unused_configs = true
-ignore_missing_imports = false
+ignore_missing_imports = true
 
-# Make mypy strict for the src/ package and more permissive elsewhere
-[tool.mypy."src.*"]
+[[tool.mypy.overrides]]
+module = "src.*"
 strict = true
