@@ -4,7 +4,7 @@ from fastapi import FastAPI
 
 from .config import settings
 from .schemas import HealthResponse
-from .storage import init_db
+from .storage import get_engine, init_db
 
 logger = logging.getLogger("photo_archivist")
 logging.basicConfig(level=logging.INFO)
@@ -26,8 +26,9 @@ def on_startup() -> None:
 
     # Initialize storage (creates SQLite file/tables if needed). Log only non-sensitive info.
     try:
-        init_db()
         db_path = getattr(settings, "DB_PATH", None)
+        engine = get_engine(db_path)
+        init_db(engine)
         db_display = None
         if db_path is not None:
             # Only show the filename portion to avoid leaking absolute paths
