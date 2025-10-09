@@ -1,7 +1,7 @@
-import os
 import sys
+from pathlib import Path
 
-# Ensure project root is on sys.path so tests can import packages under src/
-ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-if ROOT not in sys.path:
-    sys.path.insert(0, ROOT)
+# Ensure src/ is on sys.path so tests can import photo_archivist
+SRC_PATH = Path(__file__).resolve().parent.parent / "src"
+if str(SRC_PATH) not in sys.path:
+    sys.path.insert(0, str(SRC_PATH))
