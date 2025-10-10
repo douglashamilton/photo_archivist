@@ -15,7 +15,7 @@ logger = logging.getLogger("photo_archivist.storage")
 
 # Module-level engine and session factory cache
 _engine: Optional[Engine] = None
-_SessionFactory: Optional[sessionmaker] = None
+_SessionFactory: Optional[sessionmaker[Session]] = None
 
 
 def _make_sqlite_url(path: Union[str, Path]) -> str:
@@ -30,7 +30,8 @@ def get_engine(path: Optional[Union[str, Path]] = None) -> Engine:
     """Return a SQLAlchemy Engine for the given path.
 
     - If path is None or 'memory', return an in-memory SQLite engine.
-    - If path is a filesystem path, ensure parent directories exist and return a file-based SQLite engine.
+    - If path is a filesystem path, ensure parent directories exist and return a
+      file-based SQLite engine.
     """
     global _engine, _SessionFactory
 
@@ -73,10 +74,10 @@ def init_db(engine: Optional[Engine] = None) -> None:
 
     # Log storage initialization without leaking sensitive details
     try:
-        url = engine.url
+        url_repr = str(engine.url)
     except Exception:
-        url = "<unknown>"
-    logger.info("storage.init_db completed; engine=%s", url)
+        url_repr = "<unknown>"
+    logger.info("storage.init_db completed; engine=%s", url_repr)
 
 
 @contextmanager

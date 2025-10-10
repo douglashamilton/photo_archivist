@@ -1,9 +1,16 @@
 import logging
+from typing import Any, Dict
 
 from fastapi import FastAPI
+from fastapi.responses import JSONResponse
 
+from .auth import get_msal_client
 from .config import settings
-from .schemas import HealthResponse
+from .schemas import (
+    AuthConnectRequest,
+    AuthConnectResponse,
+    HealthResponse,
+)
 from .storage import get_engine, init_db
 
 logger = logging.getLogger("photo_archivist")
@@ -24,7 +31,8 @@ def on_startup() -> None:
         }
     )
 
-    # Initialize storage (creates SQLite file/tables if needed). Log only non-sensitive info.
+    # Initialize storage (creates SQLite file/tables as needed).
+    # Log only non-sensitive info.
     try:
         db_path = getattr(settings, "DB_PATH", None)
         engine = get_engine(db_path)
@@ -46,3 +54,16 @@ def on_startup() -> None:
 def health() -> HealthResponse:
     logger.debug({"event": "health.check"})
     return HealthResponse(ok=True, version=settings.VERSION, service=settings.APP_NAME)
+
+
+@app.post("/api/auth/connect", response_model=AuthConnectResponse)
+def auth_connect(request: AuthConnectRequest) -> AuthConnectResponse | JSONResponse:
+    client = get_msal_client()
+    flow = request.flow or "pkce"
+    try:
+        result: Dict[str, Any] = client.ensure_connected(flow=flow)
+    except ValueError as exc:
+        if str(exc) == "unsupported_flow":
+            return JSONResponse(status_code=400, content={"error": "unsupported_flow"})
+        raise
+    return AuthConnectResponse(**result)

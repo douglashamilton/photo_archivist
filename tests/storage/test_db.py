@@ -6,9 +6,9 @@ from sqlalchemy.engine import Engine
 
 
 def test_init_db_creates_expected_tables(tmp_path: Path) -> None:
-    """Create a temporary SQLite file, call init_db/get_engine, and assert expected tables exist.
+    """Create a temporary SQLite file and assert expected tables exist.
 
-    This test is written first (TDD). It will fail until the storage package is implemented.
+    This test is written first (TDD); it fails until the storage layer is in place.
     """
     db_path = tmp_path / "test_photo_archivist.db"
 
@@ -37,7 +37,7 @@ def test_init_db_creates_expected_tables(tmp_path: Path) -> None:
     with storage.get_session() as session:
         assert hasattr(session, "bind")
         assert isinstance(session.bind, Engine)
-        # Session.bind may be None if session is unbound; ensure it's the same engine if present
+        # Session.bind may be None; ensure it's the same engine when present
         if session.bind is not None:
             assert session.bind.url == engine.url
 
