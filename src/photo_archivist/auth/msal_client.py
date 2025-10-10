@@ -6,7 +6,6 @@ from typing import Any, Dict, Optional
 
 import msal
 from msal import SerializableTokenCache
-
 from photo_archivist.config import settings
 from photo_archivist.utils import crypto
 

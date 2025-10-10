@@ -5,7 +5,6 @@ from typing import Any, Dict, List
 
 import pytest
 from fastapi.testclient import TestClient
-
 from photo_archivist.app import app
 from photo_archivist.config import settings
 
