@@ -58,3 +58,6 @@ ignore_missing_imports = true
 [[tool.mypy.overrides]]
 module = "src.*"
 strict = true
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
