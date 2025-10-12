@@ -11,6 +11,8 @@ __pycache__/
 
 # Secrets
 .env
+.env.test
+.env.example
 *.key
 *.pem
 
@@ -21,13 +23,13 @@ __pycache__/
 *.bak
 *.tmp
 
-# Python cache
-__pycache__/
-*.pyc
-
 # Coverage
 .coverage
 
-# Secrets
-.env.test
-.env.example
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Local databases
+photo_archivist.db
