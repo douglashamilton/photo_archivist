@@ -7,6 +7,7 @@ Welcome! Review the files in `docs/` for product context, architectural notes, a
 - Keep changes within scope; open follow-up tasks for large refactors.
 - Ensure new or modified code is covered by existing tests or add new ones as needed.
 - Run the relevant test suite(s) before committing.
+- Where files have been created that **should not be version-controlled**, update .gitignore accordingly. 
 
 ## Pull Requests
 - Summarize user-facing and technical changes succinctly.
