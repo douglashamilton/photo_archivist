@@ -55,11 +55,21 @@ Start-Process "http://127.0.0.1:8787/health"
 
 Or fetch JSON from PowerShell using Invoke-RestMethod:
 
-```powershell
-Invoke-RestMethod "http://127.0.0.1:8787/health"
-```
+ ```powershell
+ Invoke-RestMethod "http://127.0.0.1:8787/health"
+ ```
 
 Notes
 - To stop the server, press Ctrl+C in the terminal running uvicorn.
 - If you get import errors like `ModuleNotFoundError: No module named 'src'`, run uvicorn from the project root (so `src/` is on sys.path) or install the package in editable mode (`pip install -e .`).
 - To update the reported version, set `VERSION` in a `.env` file at the project root and restart the server (the app uses pydantic-settings to read `.env`).
+
+## Manual OneDrive Scan
+
+After completing `/api/auth/connect`, trigger a scan and view the shortlist:
+
+```powershell
+$scanBody = @{ month = "2025-08"; limit = 10 } | ConvertTo-Json
+Invoke-RestMethod -Uri "http://127.0.0.1:8787/api/run/scan" -Method Post -Body $scanBody -ContentType "application/json"
+Invoke-RestMethod -Uri "http://127.0.0.1:8787/api/shortlist?month=2025-08"
+```

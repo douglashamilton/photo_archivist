@@ -6,10 +6,12 @@ from typing import Optional
 
 from sqlalchemy import (
     Boolean,
+    Float,
     ForeignKey,
     Index,
     Integer,
     String,
+    Text,
     UniqueConstraint,
     func,
 )
@@ -39,13 +41,28 @@ class PhotoItem(Base):
     __tablename__ = "photo_items"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    source_url: Mapped[str] = mapped_column(
-        String(1024), nullable=False, unique=True, index=True
+    drive_item_id: Mapped[str] = mapped_column(
+        String(256), nullable=False, unique=True, index=True
     )
+    drive_id: Mapped[Optional[str]] = mapped_column(
+        String(128), nullable=True, index=True
+    )
+    source_url: Mapped[Optional[str]] = mapped_column(
+        String(1024),
+        nullable=True,
+        unique=True,
+        index=True,
+        comment="Share link to the photo when created",
+    )
+    download_url: Mapped[Optional[str]] = mapped_column(String(1024), nullable=True)
     filename: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
     captured_at: Mapped[Optional[datetime]] = mapped_column(
         _DateTime(timezone=True), nullable=True
     )
+    width: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    height: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    month: Mapped[Optional[str]] = mapped_column(String(7), nullable=True, index=True)
+    quality_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     sha256: Mapped[Optional[str]] = mapped_column(
         String(128), nullable=True, index=True
     )
@@ -66,6 +83,7 @@ class Run(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[Optional[str]] = mapped_column(String(256), nullable=True, index=True)
+    month: Mapped[Optional[str]] = mapped_column(String(7), nullable=True, index=True)
     started_at: Mapped[datetime] = mapped_column(
         _DateTime(timezone=True), server_default=func.now()
     )
@@ -75,6 +93,11 @@ class Run(Base):
     status: Mapped[RunStatus] = mapped_column(
         String(32), nullable=False, default=RunStatus.PENDING.value
     )
+    delta_cursor: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    total_items: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    eligible_items: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    shortlisted_items: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     shortlist_entries = relationship(
         "ShortlistEntry", back_populates="run", cascade="all, delete-orphan"
@@ -97,6 +120,7 @@ class ShortlistEntry(Base):
         ForeignKey("runs.id"), nullable=False, index=True
     )
     rank: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         _DateTime(timezone=True), server_default=func.now()
     )

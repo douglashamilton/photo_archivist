@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 import msal
 from msal import SerializableTokenCache
@@ -81,6 +81,38 @@ class MSALClient:
 
         self._save_cache_if_changed()
         return {"status": "connected", "flow": flow, "result": result}
+
+    def get_token(self, scopes: Optional[List[str]] = None) -> str:
+        """Return an access token using cached refresh tokens when available."""
+        scope_list = list(scopes or settings.MSAL_SCOPES)
+        accounts = self.app.get_accounts()
+        if not accounts:
+            logger.warning({"event": "auth.token.no_accounts"})
+            raise RuntimeError("auth.not_connected")
+
+        account = accounts[0]
+        try:
+            result: Dict[str, Any] = self.app.acquire_token_silent(
+                scope_list,
+                account=account,
+            )
+        except Exception as exc:  # pragma: no cover - safety net
+            logger.exception({"event": "auth.token.silent_exception"})
+            raise RuntimeError("auth.token_unavailable") from exc
+
+        if not result or "access_token" not in result:
+            message = (
+                result.get("error_description")
+                if isinstance(result, dict)
+                else "silent token acquisition failed"
+            )
+            logger.error(
+                {"event": "auth.token.silent_missing", "message": message}
+            )
+            raise RuntimeError("auth.token_unavailable")
+
+        self._save_cache_if_changed()
+        return str(result["access_token"])
 
     # Flow implementations ---------------------------------------------------
 

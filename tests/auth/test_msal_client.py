@@ -12,12 +12,14 @@ class _FakePublicClientApplication:
     def __init__(self) -> None:
         self.acquire_device_flow_token_called = False
         self.acquire_pkce_token_called = False
+        self.acquire_token_silent_called = False
         self.cached_accounts: list[Dict[str, Any]] = []
         self.token_result: Dict[str, Any] | None = {
             "access_token": "fake-access",
             "refresh_token": "fake-refresh",
             "expires_in": 3600,
         }
+        self.silent_result: Dict[str, Any] | None = None
 
     def get_accounts(self) -> list[Dict[str, Any]]:
         return self.cached_accounts
@@ -29,6 +31,16 @@ class _FakePublicClientApplication:
         self.acquire_device_flow_token_called = True
         if device_flow.get("error"):
             raise RuntimeError("device flow error")
+        return self.token_result or {}
+
+    def acquire_token_silent(
+        self,
+        scopes: list[str],
+        account: Dict[str, Any] | None,
+    ) -> Dict[str, Any]:
+        self.acquire_token_silent_called = True
+        if self.silent_result is not None:
+            return self.silent_result
         return self.token_result or {}
 
     def initiate_device_flow(self, scopes: list[str]) -> Dict[str, Any]:
@@ -152,3 +164,96 @@ def test_msal_client_uses_cached_accounts(
     assert status["status"] == "already_connected"
     assert not fake_pca.acquire_device_flow_token_called
     assert not fake_pca.acquire_pkce_token_called
+
+
+def test_get_token_returns_access_token_via_silent_flow(
+    tmp_cache: Path,
+    fake_pca: _FakePublicClientApplication,
+    fake_crypto: _FakeCrypto,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from photo_archivist.auth import msal_client as msal_mod
+
+    fake_pca.cached_accounts = [{"home_account_id": "abc"}]
+    fake_pca.silent_result = {
+        "access_token": "silent-token",
+        "expires_in": 1800,
+    }
+
+    monkeypatch.setattr(
+        msal_mod.msal, "PublicClientApplication", lambda *args, **kwargs: fake_pca
+    )
+    monkeypatch.setattr(
+        msal_mod.crypto, "encrypt_bytes", fake_crypto.encrypt_bytes, raising=False
+    )
+    monkeypatch.setattr(
+        msal_mod.crypto, "decrypt_bytes", fake_crypto.decrypt_bytes, raising=False
+    )
+    monkeypatch.setattr(msal_mod.settings, "AUTH_CACHE_PATH", tmp_cache, raising=False)
+
+    client = msal_mod.MSALClient()
+    token = client.get_token(scopes=["Files.Read"])
+
+    assert token == "silent-token"
+    assert fake_pca.acquire_token_silent_called is True
+
+
+def test_get_token_raises_when_not_connected(
+    tmp_cache: Path,
+    fake_pca: _FakePublicClientApplication,
+    fake_crypto: _FakeCrypto,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from photo_archivist.auth import msal_client as msal_mod
+
+    fake_pca.cached_accounts = []
+
+    monkeypatch.setattr(
+        msal_mod.msal, "PublicClientApplication", lambda *args, **kwargs: fake_pca
+    )
+    monkeypatch.setattr(
+        msal_mod.crypto, "encrypt_bytes", fake_crypto.encrypt_bytes, raising=False
+    )
+    monkeypatch.setattr(
+        msal_mod.crypto, "decrypt_bytes", fake_crypto.decrypt_bytes, raising=False
+    )
+    monkeypatch.setattr(msal_mod.settings, "AUTH_CACHE_PATH", tmp_cache, raising=False)
+
+    client = msal_mod.MSALClient()
+
+    with pytest.raises(RuntimeError) as excinfo:
+        client.get_token()
+
+    assert "auth.not_connected" in str(excinfo.value)
+    assert fake_pca.acquire_token_silent_called is False
+
+
+def test_get_token_raises_when_silent_flow_fails(
+    tmp_cache: Path,
+    fake_pca: _FakePublicClientApplication,
+    fake_crypto: _FakeCrypto,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from photo_archivist.auth import msal_client as msal_mod
+
+    fake_pca.cached_accounts = [{"home_account_id": "abc"}]
+    fake_pca.silent_result = {}  # missing access token
+
+    monkeypatch.setattr(
+        msal_mod.msal, "PublicClientApplication", lambda *args, **kwargs: fake_pca
+    )
+    monkeypatch.setattr(
+        msal_mod.crypto, "encrypt_bytes", fake_crypto.encrypt_bytes, raising=False
+    )
+    monkeypatch.setattr(
+        msal_mod.crypto, "decrypt_bytes", fake_crypto.decrypt_bytes, raising=False
+    )
+    monkeypatch.setattr(msal_mod.settings, "AUTH_CACHE_PATH", tmp_cache, raising=False)
+
+    client = msal_mod.MSALClient()
+
+    with pytest.raises(RuntimeError) as excinfo:
+        client.get_token(scopes=["Files.Read"])
+
+    assert "auth.token_unavailable" in str(excinfo.value)
+    assert fake_pca.acquire_token_silent_called is True

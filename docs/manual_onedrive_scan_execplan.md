@@ -8,22 +8,31 @@ Deliver the first end-to-end slice that turns a successful Microsoft sign-in int
 
 ## Progress
 
-- [ ] Extend storage models and configuration to capture Graph item identity, resolution, month buckets, and delta cursors.
-- [ ] Expose an access-token retrieval path in `MSALClient` and wrap the Microsoft Graph delta API in `graph/client.py`.
-- [ ] Implement `ScanService.run` with JPG filtering, resolution gating, and shortlist persistence.
-- [ ] Add `/api/run/scan` and `/api/shortlist` endpoints plus Pydantic schemas for requests and responses.
-- [ ] Cover the new logic with service-level and API tests using mocked Graph responses.
-- [ ] Update developer docs and `.env.example` so the flow is discoverable.
+- [x] Extend storage models and configuration to capture Graph item identity, resolution, month buckets, and delta cursors.
+- [x] Expose an access-token retrieval path in `MSALClient` and wrap the Microsoft Graph delta API in `graph/client.py`.
+- [x] Implement `ScanService.run` with JPG filtering, resolution gating, and shortlist persistence.
+- [x] Add `/api/run/scan` and `/api/shortlist` endpoints plus Pydantic schemas for requests and responses.
+- [x] Cover the new logic with service-level and API tests using mocked Graph responses.
+- [x] Update developer docs and `.env.example` so the flow is discoverable.
 
 ## Surprises & Discoveries
 
-None yet.
+- Observed that the default session context rolls back whenever an exception bubbles out. Explicit commits were added in the scan service to ensure failed runs still persist their status and error message.
 
 ## Decision Log
 
-- Decision: _pending_
-  Rationale: _pending_
-  Date/Author: _pending_
+- Decision: Allow `PhotoItem.source_url` to be nullable until share links are generated.
+  Rationale: Scans will persist metadata before publishing share links, so the column must accept `NULL` without breaking uniqueness.
+  Date/Author: 2025-10-13 / Codex
+- Decision: `MSALClient.get_token` raises `auth.not_connected` when no cached account exists and `auth.token_unavailable` when silent refresh fails.
+  Rationale: This keeps API consumers from assuming a token is available and lets the HTTP layer surface specific remediation messages.
+  Date/Author: 2025-10-13 / Codex
+- Decision: `GraphClient.get_delta` raises `graph.delta_missing` if Microsoft Graph omits `@odata.deltaLink`.
+  Rationale: A missing cursor prevents incremental sync, so the scan must fail fast to avoid data loss.
+  Date/Author: 2025-10-13 / Codex
+- Decision: Commit scan transaction state before returning or re-raising errors.
+  Rationale: FastAPI tests revealed that without an explicit commit, failed runs were rolled back entirely, hiding diagnostics that later iterations rely upon.
+  Date/Author: 2025-10-13 / Codex
 
 ## Outcomes & Retrospective
 

@@ -28,6 +28,36 @@ def test_init_db_creates_expected_tables(tmp_path: Path) -> None:
     expected = {"photo_items", "shortlist_entries", "runs", "orders"}
     assert expected.issubset(tables), f"Missing tables: {expected - tables}"
 
+    photo_columns = {col["name"] for col in inspector.get_columns("photo_items")}
+    assert {
+        "drive_item_id",
+        "drive_id",
+        "source_url",
+        "download_url",
+        "filename",
+        "captured_at",
+        "width",
+        "height",
+        "month",
+        "quality_score",
+        "sha256",
+        "eligible",
+    }.issubset(photo_columns)
+
+    run_columns = {col["name"] for col in inspector.get_columns("runs")}
+    assert {
+        "month",
+        "status",
+        "delta_cursor",
+        "total_items",
+        "eligible_items",
+        "shortlisted_items",
+        "error_message",
+    }.issubset(run_columns)
+
+    shortlist_columns = {col["name"] for col in inspector.get_columns("shortlist_entries")}
+    assert {"score", "rank", "photo_id", "run_id"}.issubset(shortlist_columns)
+
     # Ensure primary keys exist for each expected table
     for table in expected:
         pk = inspector.get_pk_constraint(table)
