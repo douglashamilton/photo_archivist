@@ -5,9 +5,8 @@ from typing import List
 
 import pytest
 import responses
-from responses import matchers
-
 from photo_archivist.graph import GraphClient
+from responses import matchers
 
 
 def _token_supplier_factory(tokens: List[str]) -> str:
@@ -49,7 +48,9 @@ def test_get_delta_combines_pages_and_filters_non_jpeg() -> None:
                     "id": "doc-1",
                     "name": "notes.docx",
                     "parentReference": {"driveId": "drive-123"},
-                    "file": {"mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document"},
+                    "file": {
+                        "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    },
                 },
             ],
             "@odata.nextLink": f"{first_url}?$skiptoken=abc",
@@ -123,7 +124,10 @@ def test_get_delta_uses_existing_cursor_without_top_parameter() -> None:
     items, new_cursor = client.get_delta(cursor=cursor)
 
     assert items == []
-    assert new_cursor == "https://graph.microsoft.com/v1.0/me/drive/root/delta?$deltatoken=new"
+    assert (
+        new_cursor
+        == "https://graph.microsoft.com/v1.0/me/drive/root/delta?$deltatoken=new"
+    )
     assert responses.calls[0].request.url == cursor
     assert "$top" not in responses.calls[0].request.url
     assert len(token_calls) == 1

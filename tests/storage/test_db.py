@@ -55,7 +55,9 @@ def test_init_db_creates_expected_tables(tmp_path: Path) -> None:
         "error_message",
     }.issubset(run_columns)
 
-    shortlist_columns = {col["name"] for col in inspector.get_columns("shortlist_entries")}
+    shortlist_columns = {
+        col["name"] for col in inspector.get_columns("shortlist_entries")
+    }
     assert {"score", "rank", "photo_id", "run_id"}.issubset(shortlist_columns)
 
     # Ensure primary keys exist for each expected table

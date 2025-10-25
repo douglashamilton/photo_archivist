@@ -5,10 +5,9 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 from typing import Callable, ContextManager, List, Optional, Sequence, Tuple
 
-from sqlalchemy.orm import Session
-
 from photo_archivist.graph import DriveItem, GraphClient
 from photo_archivist.storage.repo import Repository, RunTotals
+from sqlalchemy.orm import Session
 
 logger = logging.getLogger("photo_archivist.services.scan")
 
@@ -57,7 +56,9 @@ class ScanService:
 
     # Public API -----------------------------------------------------------------
 
-    def run(self, *, month: Optional[str] = None, limit: Optional[int] = None) -> RunSummary:
+    def run(
+        self, *, month: Optional[str] = None, limit: Optional[int] = None
+    ) -> RunSummary:
         month_bucket = month or _previous_month_string()
         if not _is_valid_month(month_bucket):
             raise ValueError("invalid_month")
@@ -72,7 +73,11 @@ class ScanService:
             repo.mark_run_running(run)
 
             previous_run = repo.latest_completed_run()
-            cursor = previous_run.delta_cursor if previous_run and previous_run.delta_cursor else None
+            cursor = (
+                previous_run.delta_cursor
+                if previous_run and previous_run.delta_cursor
+                else None
+            )
 
             logger.info(
                 {

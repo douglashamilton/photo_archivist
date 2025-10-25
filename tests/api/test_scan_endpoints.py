@@ -5,7 +5,6 @@ from typing import List, Optional, Tuple
 
 import pytest
 from fastapi.testclient import TestClient
-
 from photo_archivist.app import app
 from photo_archivist.services.scan_service import RunSummary, ShortlistItem
 
@@ -47,7 +46,9 @@ class _StubScanService:
         self.raise_runtime: Optional[str] = None
         self.shortlist_empty = False
 
-    def run(self, *, month: Optional[str] = None, limit: Optional[int] = None) -> RunSummary:
+    def run(
+        self, *, month: Optional[str] = None, limit: Optional[int] = None
+    ) -> RunSummary:
         if self.raise_runtime:
             raise RuntimeError(self.raise_runtime)
         self.run_calls.append((month, limit))
@@ -61,14 +62,18 @@ class _StubScanService:
 
 
 @pytest.fixture
-def client_and_stub(monkeypatch: pytest.MonkeyPatch) -> Tuple[TestClient, _StubScanService]:
+def client_and_stub(
+    monkeypatch: pytest.MonkeyPatch,
+) -> Tuple[TestClient, _StubScanService]:
     stub = _StubScanService()
     monkeypatch.setattr("photo_archivist.app._get_scan_service", lambda: stub)
     client = TestClient(app)
     return client, stub
 
 
-def test_trigger_scan_returns_summary(client_and_stub: Tuple[TestClient, _StubScanService]) -> None:
+def test_trigger_scan_returns_summary(
+    client_and_stub: Tuple[TestClient, _StubScanService]
+) -> None:
     client, stub = client_and_stub
     response = client.post(
         "/api/run/scan",
@@ -82,7 +87,9 @@ def test_trigger_scan_returns_summary(client_and_stub: Tuple[TestClient, _StubSc
     assert stub.run_calls == [("2025-08", 5)]
 
 
-def test_trigger_scan_surfaces_auth_conflict(client_and_stub: Tuple[TestClient, _StubScanService]) -> None:
+def test_trigger_scan_surfaces_auth_conflict(
+    client_and_stub: Tuple[TestClient, _StubScanService]
+) -> None:
     client, stub = client_and_stub
     stub.raise_runtime = "auth.not_connected"
     response = client.post("/api/run/scan", json={"month": "2025-08"})
@@ -90,7 +97,9 @@ def test_trigger_scan_surfaces_auth_conflict(client_and_stub: Tuple[TestClient, 
     assert response.json()["detail"] == "auth.not_connected"
 
 
-def test_get_shortlist_returns_items(client_and_stub: Tuple[TestClient, _StubScanService]) -> None:
+def test_get_shortlist_returns_items(
+    client_and_stub: Tuple[TestClient, _StubScanService]
+) -> None:
     client, stub = client_and_stub
     response = client.get("/api/shortlist", params={"month": "2025-08"})
     assert response.status_code == 200
@@ -101,7 +110,9 @@ def test_get_shortlist_returns_items(client_and_stub: Tuple[TestClient, _StubSca
     assert stub.shortlist_months == ["2025-08"]
 
 
-def test_get_shortlist_returns_404_when_missing(client_and_stub: Tuple[TestClient, _StubScanService]) -> None:
+def test_get_shortlist_returns_404_when_missing(
+    client_and_stub: Tuple[TestClient, _StubScanService]
+) -> None:
     client, stub = client_and_stub
     stub.shortlist_empty = True
     response = client.get("/api/shortlist", params={"month": "2025-08"})

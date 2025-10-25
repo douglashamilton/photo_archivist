@@ -106,9 +106,7 @@ class MSALClient:
                 if isinstance(result, dict)
                 else "silent token acquisition failed"
             )
-            logger.error(
-                {"event": "auth.token.silent_missing", "message": message}
-            )
+            logger.error({"event": "auth.token.silent_missing", "message": message})
             raise RuntimeError("auth.token_unavailable")
 
         self._save_cache_if_changed()

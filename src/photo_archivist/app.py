@@ -6,18 +6,20 @@ from fastapi.responses import JSONResponse
 
 from .auth import get_msal_client
 from .config import settings
+from .graph import GraphClient
 from .schemas import (
     AuthConnectRequest,
     AuthConnectResponse,
     HealthResponse,
     ScanRequest,
     ScanResponse,
-    ShortlistItem as ShortlistItemSchema,
     ShortlistResponse,
+)
+from .schemas import (
+    ShortlistItem as ShortlistItemSchema,
 )
 from .services import ScanService
 from .storage import get_engine, get_session, init_db
-from .graph import GraphClient
 
 logger = logging.getLogger("photo_archivist")
 logging.basicConfig(level=logging.INFO)
@@ -126,7 +128,9 @@ def trigger_scan(request: ScanRequest) -> ScanResponse:
 
 
 @app.get("/api/shortlist", response_model=ShortlistResponse)
-def get_shortlist(month: str = Query(default=..., description="Month in YYYY-MM format")) -> ShortlistResponse:
+def get_shortlist(
+    month: str = Query(default=..., description="Month in YYYY-MM format")
+) -> ShortlistResponse:
     service = _get_scan_service()
     try:
         items = service.shortlist_for_month(month)

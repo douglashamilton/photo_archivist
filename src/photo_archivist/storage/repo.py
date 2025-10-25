@@ -12,6 +12,8 @@ from .models import (
     Run,
     RunStatus,
     ShortlistEntry,
+)
+from .models import (
     ShortlistEntry as ShortlistEntryModel,
 )
 
@@ -174,6 +176,4 @@ class Repository:
             .order_by(ShortlistEntry.rank.asc(), ShortlistEntry.id.asc())
         )
         rows = self.session.execute(stmt).all()
-        return [
-            ShortlistProjection(photo=photo, entry=entry) for entry, photo in rows
-        ]
+        return [ShortlistProjection(photo=photo, entry=entry) for entry, photo in rows]

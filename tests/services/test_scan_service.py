@@ -5,12 +5,11 @@ from datetime import datetime, timezone
 from typing import Callable, Iterator, List, Optional, Sequence, Tuple
 
 import pytest
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Session, sessionmaker
-
 from photo_archivist.graph import DriveItem
 from photo_archivist.services.scan_service import RunSummary, ScanService
 from photo_archivist.storage.models import Base, Run, RunStatus
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session, sessionmaker
 
 
 def _build_session_factory() -> Callable[[], Iterator[Session]]:
@@ -39,13 +38,17 @@ class _FakeGraphClient:
         self.items: Sequence[DriveItem] = []
         self.delta_cursor: str = "delta-0"
 
-    def get_delta(self, cursor: Optional[str] = None) -> Tuple[Sequence[DriveItem], str]:
+    def get_delta(
+        self, cursor: Optional[str] = None
+    ) -> Tuple[Sequence[DriveItem], str]:
         self.calls.append(cursor)
         return self.items, self.delta_cursor
 
 
 class _BoomGraphClient:
-    def get_delta(self, cursor: Optional[str] = None) -> Tuple[Sequence[DriveItem], str]:
+    def get_delta(
+        self, cursor: Optional[str] = None
+    ) -> Tuple[Sequence[DriveItem], str]:
         raise RuntimeError("graph.down")
 
 
