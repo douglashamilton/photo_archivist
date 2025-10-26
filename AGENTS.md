@@ -8,18 +8,18 @@ Guidance for any agent contributing to the Photo Archivist workspace.
 - Default to vertical slices so stakeholders can review working software after every loop.
 
 ## Workflow Overview
-1. **Research** — collect the intake and produce the PRD (`docs/prd.md`) using `.agent/PRD-template.md`.
-2. **Design** — derive the TDD (`docs/tdd.md`) from `.agent/TDD-template.md`.
-3. **Plan & Execute** — iterate slices with `prompts/step-3-plan-and-execute.prompt.md`. Store slice plans in `docs/slices/`, and update `docs/build-log.md` with outcomes, decisions, and manual checks.
+1. **Research** - run `prompts/step-1-research.prompt.md` to collect the intake and create `docs/prd.md` from `templates/PRD-template.md`.
+2. **Design** - run `prompts/step-2-design.prompt.md` to produce `docs/tdd.md` using `templates/TDD-template.md`.
+3. **Plan & Execute** - loop with `prompts/step-3-plan-and-execute.prompt.md`, saving slice plans to `docs/slices/` via `templates/plan-template.md` and updating `docs/build-log.md`.
 
-Each slice should end with automated tests plus a manual verification note for the user.
+Each slice must finish with automated tests plus a manual verification note for the user before moving on.
 
 ## Repo Tour
-- `prompts/` — step-by-step playbooks. Start here before beginning work.
-- `.agent/` — templates for PRD, TDD, and slice plans.
-- `docs/` — live artefacts (`prd.md`, `tdd.md`, `build-log.md`, `slices/`).
+- `prompts/` - step-by-step playbooks. Start here.
+- `templates/` - PRD, TDD, and slice-plan templates.
+- `docs/` - live artefacts (`prd.md`, `tdd.md`, `build-log.md`, `slices/`).
 
-Review these folders before making substantive changes.
+Review these folders and the relevant template before creating or updating an artefact.
 
 ## Development Practices
 - Work in small, reviewable increments tied to a slice plan.

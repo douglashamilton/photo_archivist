@@ -1,3 +1,3 @@
 # Slice Plans
 
-Store each vertical slice plan here using `.agent/plan-template.md` and the filename pattern `slice-<id>.md`.
+Store each vertical slice plan here using `templates/plan-template.md` and the filename pattern `slice-<id>.md`.

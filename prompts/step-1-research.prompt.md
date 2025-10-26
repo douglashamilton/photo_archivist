@@ -4,7 +4,7 @@
 - Collect the full project intake directly from the user before writing anything.
 
 **Deliverable**
-- `docs/prd.md`, following `.agent/PRD-template.md`.
+- `docs/prd.md`, following `templates/PRD-template.md`.
 
 **Next Action**
 - Confirm the PRD exists, share the path, and ask the user for review or updates.
@@ -25,7 +25,7 @@ Ask the user to provide the following information:
 
 ## Step 2
 
-Synthesise the intake and produce the PRD using `.agent/PRD-template.md`. Save it to `../docs/prd.md`.
+Synthesise the intake and produce the PRD using `templates/PRD-template.md`. Save it to `../docs/prd.md`.
 
 ## Step 3
 

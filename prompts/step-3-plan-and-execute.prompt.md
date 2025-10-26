@@ -4,7 +4,7 @@
 - `docs/prd.md` and `docs/tdd.md` exist and reflect the current scope. If either is missing, return to the earlier steps before continuing.
 
 **Deliverables**
-- Slice plans saved as `../docs/slices/slice-<id>.md` using `.agent/plan-template.md`.
+- Slice plans saved as `../docs/slices/slice-<id>.md` using `templates/plan-template.md`.
 - Running project log in `../docs/build-log.md`.
 
 **Next Action**
@@ -16,7 +16,7 @@ Read the PRD and TDD. Assess the current codebase to understand the remaining ga
 
 ## Step 2 — Plan the Slice
 
-Choose the next vertical slice. Capture the plan in `../docs/slices/slice-<id>.md` using `.agent/plan-template.md`. Include dependencies, tasks, automated tests, and a manual verification step for the user.
+Choose the next vertical slice. Capture the plan in `../docs/slices/slice-<id>.md` using `templates/plan-template.md`. Include dependencies, tasks, automated tests, and a manual verification step for the user.
 
 ## Step 3 — Execute
 

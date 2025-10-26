@@ -4,7 +4,7 @@
 - `docs/prd.md` must exist and be up to date. If missing, ask the user to complete Research Step 2 first.
 
 **Deliverable**
-- `docs/tdd.md`, produced from `.agent/TDD-template.md`.
+- `docs/tdd.md`, produced from `templates/TDD-template.md`.
 
 **Next Action**
 - Share the TDD path, call out design decisions or open questions, and request user review.
@@ -15,7 +15,7 @@ Read `../docs/prd.md`. If it is missing or stale, pause and request the updated 
 
 ## Step 2
 
-Create the high-level technical design using `.agent/TDD-template.md`. Save it as `../docs/tdd.md`.
+Create the high-level technical design using `templates/TDD-template.md`. Save it as `../docs/tdd.md`.
 
 ## Step 3
 
