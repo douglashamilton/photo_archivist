@@ -1,13 +1,22 @@
 # Design Instructions
 
+**Prerequisites**
+- `docs/prd.md` must exist and be up to date. If missing, ask the user to complete Research Step 2 first.
+
+**Deliverable**
+- `docs/tdd.md`, produced from `.agent/TDD-template.md`.
+
+**Next Action**
+- Share the TDD path, call out design decisions or open questions, and request user review.
+
 ## Step 1
 
-Read the product requirements document (PRD) located at `../docs/prd.md`. If the PRD does not exist, inform the user that the PRD is missing and request that they complete Step 2 of the research instructions first.
+Read `../docs/prd.md`. If it is missing or stale, pause and request the updated PRD.
 
 ## Step 2
 
-Based on the PRD, create a high-level technical design document (TDD) based on the template in `./.agent/tdd-template.md`. Write the design document in markdown format to the following folder: `../docs/` with the filename `tdd.md`.
+Create the high-level technical design using `.agent/TDD-template.md`. Save it as `../docs/tdd.md`.
 
 ## Step 3
 
-Once the PRD is created, inform the user that the TDD has been created and provide the path to the document. Request that the user review the TDD, and provide feedback by addressing the open questions or request any changes if necessary. 
+Inform the user that `docs/tdd.md` is ready, summarise key design choices or open questions, and request feedback or changes.

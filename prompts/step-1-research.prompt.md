@@ -1,8 +1,17 @@
 # Research Instructions
 
+**Prerequisites**
+- Collect the full project intake directly from the user before writing anything.
+
+**Deliverable**
+- `docs/prd.md`, following `.agent/PRD-template.md`.
+
+**Next Action**
+- Confirm the PRD exists, share the path, and ask the user for review or updates.
+
 ## Step 1
 
-Ask the user to input the following information before proceeding with the research:
+Ask the user to provide the following information:
 * **Project name:** {{Name}}
 * **One-sentence objective:** {{Objective}}
 * **Primary users & JTBD:** {{Users / key jobs}}
@@ -12,12 +21,12 @@ Ask the user to input the following information before proceeding with the resea
 * **Environments:** {{Web/mobile/desktop/CLI; OS; cloud}}
 * **Non-goals / out of scope:** {{Non-goals}}
 * **Success criteria (business & user):** {{KPIs, UX outcomes}}
-* **Depth:** {{brief | standard | deep}}  (default: standard)
+* **Depth:** {{brief | standard | deep}} (default: standard)
 
 ## Step 2
 
-Synthesise the input information and perform deep research. Produce a product requirements document (PRD) as per the following format: `...agent/PRD-template.md`. Write the PRD in markdown format to the following folder: `../docs/` with the filename `prd.md`. 
+Synthesise the intake and produce the PRD using `.agent/PRD-template.md`. Save it to `../docs/prd.md`.
 
 ## Step 3
 
-Once the PRD is created, inform the user that the PRD has been created and provide the path to the document. Request that the user review the PRD, and provide feedback by addressing the open questions or request any changes if necessary. 
+Notify the user that `docs/prd.md` is ready, highlight any open questions, and request feedback or changes.

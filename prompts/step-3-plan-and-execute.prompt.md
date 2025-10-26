@@ -1,16 +1,31 @@
 # Plan and Execute
 
-## Step 1
+**Prerequisites**
+- `docs/prd.md` and `docs/tdd.md` exist and reflect the current scope. If either is missing, return to the earlier steps before continuing.
 
-Read the PRD and TDD both located in the `../docs/` folder. If either document does not exist, inform the user that the documents are missing and request that they complete the previous steps first.
+**Deliverables**
+- Slice plans saved as `../docs/slices/slice-<id>.md` using `.agent/plan-template.md`.
+- Running project log in `../docs/build-log.md`.
 
-## Step 2
+**Next Action**
+- After every slice, report implementation status, share the manual check, and confirm with the user before starting the next slice.
 
-Iteratively plan and execute the development of the application in vertical slices, following these steps:
-1. **Review Current State**: Assess the current codebase and the gap to the MVP.
-2. **Plan the Next Slice**: Create a development plan for the next vertical slice (slice ID) based on the PRD, TDD and current codebase. Use the format in `./.agent/plan-template.md`. Write the plan in markdown format to the following folder: `../docs/` with the filename `slice-<slice_ID>-plan.md`.
-3. **Execute the Slice**: Implement the planned slice, put testing in place to ensure the new code works as expected and does not introduce regressions.
-4. **Document Changes**: Update the build log concisely with relevant documentation to reflect the changes made, in following folder: `../docs/` with the filename `build-log.md`.. 
-5. After each iteration, the plan needs to inform the user of a manual test that can be performed to inspect the change. 
-6. **Loop Back**: Repeat steps 1-5 until the MVP is fully developed.
+## Step 1 — Review
 
+Read the PRD and TDD. Assess the current codebase to understand the remaining gap to the MVP.
+
+## Step 2 — Plan the Slice
+
+Choose the next vertical slice. Capture the plan in `../docs/slices/slice-<id>.md` using `.agent/plan-template.md`. Include dependencies, tasks, automated tests, and a manual verification step for the user.
+
+## Step 3 — Execute
+
+Implement the slice, keeping work within the agreed scope. Add or update automated tests to prove the behaviour and guard against regressions.
+
+## Step 4 — Log and Share
+
+Update `../docs/build-log.md` with a concise summary of the slice, key decisions, and follow-ups. Report progress to the user together with the manual check instructions.
+
+## Step 5 — Repeat
+
+Continue iterating through Steps 1–4 until the MVP acceptance criteria from `docs/prd.md` are satisfied, re-appraising the plan after each slice.
