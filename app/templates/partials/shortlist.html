@@ -1,0 +1,38 @@
+<section id="shortlist" aria-live="polite">
+  {% if errors %}
+    <div class="error" role="alert">
+      <h2>Scan request issue</h2>
+      <ul>
+        {% for error in errors %}
+          <li>{{ error }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% elif results %}
+    <header>
+      <h2>Top {{ results|length }} photos</h2>
+      <p>Matched {{ summary.matched }} of {{ summary.total }} JPEG files.</p>
+    </header>
+    <ol>
+      {% for photo in results %}
+        <li>
+          <article class="result">
+            <header>
+              <h3>{{ photo.filename }}</h3>
+            </header>
+            <p>
+              Captured
+              {{ photo.captured_at.strftime("%Y-%m-%d %H:%M:%S") }}
+              {% if photo.used_fallback %}(file modified time fallback){% endif %}
+            </p>
+            <p>Brightness score: {{ "%.1f"|format(photo.brightness) }}</p>
+          </article>
+        </li>
+      {% endfor %}
+    </ol>
+  {% elif scan_attempted %}
+    <p>No photos found within the selected date range.</p>
+  {% else %}
+    <p>No scan requested yet.</p>
+  {% endif %}
+</section>

@@ -1,0 +1,1 @@
+"""Photo Archivist application package."""

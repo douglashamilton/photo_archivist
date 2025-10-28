@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>{{ page_title }}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script
+      src="https://unpkg.com/htmx.org@1.9.12"
+      integrity="sha384-1nfM9z7uEek63QgFW4DR6xHqrEwYteIlDX4NUYClCPh8uS4TU2Y3KZ9R7x0j8RXR"
+      crossorigin="anonymous"
+    ></script>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css"
+      integrity="sha384-k6RkNyKpTXN9ud8N6buhfOB/4lR8h5wzGAXyVw4Ja7+q62SMbVRHZmh9SZnNINRl"
+      crossorigin="anonymous"
+    />
+  </head>
+  <body>
+    <main class="container">
+      <h1>{{ page_title }}</h1>
+      <p>Select a photo directory and date range to start a scan.</p>
+      <form
+        id="scan-form"
+        action="/api/scans"
+        method="post"
+        hx-post="/api/scans"
+        hx-target="#shortlist"
+        hx-swap="outerHTML"
+      >
+        <label for="directory">Photo directory</label>
+        <input
+          type="text"
+          id="directory"
+          name="directory"
+          placeholder="C:\\Users\\me\\Pictures"
+          value="{{ form_values.directory }}"
+          required
+        />
+        <div class="grid">
+          <label>
+            <span>Start date</span>
+            <input
+              type="date"
+              id="start_date"
+              name="start_date"
+              value="{{ form_values.start_date }}"
+              required
+            />
+          </label>
+          <label>
+            <span>End date</span>
+            <input
+              type="date"
+              id="end_date"
+              name="end_date"
+              value="{{ form_values.end_date }}"
+              required
+            />
+          </label>
+        </div>
+        <button type="submit">Scan photos</button>
+      </form>
+      {% include "partials/shortlist.html" %}
+    </main>
+  </body>
+</html>
