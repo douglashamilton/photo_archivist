@@ -1,0 +1,95 @@
+from __future__ import annotations
+
+import logging
+from concurrent.futures import ThreadPoolExecutor
+from dataclasses import replace
+from datetime import datetime, timezone
+from threading import Lock
+from typing import Optional
+from uuid import UUID, uuid4
+
+from app.models import ScanOutcome, ScanRequest, ScanState, ScanStatus
+from app.services.scanner import run_scan
+
+logger = logging.getLogger(__name__)
+
+
+class ScanManager:
+    """Manage scan job lifecycle and background execution."""
+
+    def __init__(self, max_workers: int = 4) -> None:
+        self._executor = ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="photo-archivist")
+        self._lock = Lock()
+        self._statuses: dict[UUID, ScanStatus] = {}
+        self._outcomes: dict[UUID, ScanOutcome] = {}
+
+    def enqueue(self, request: ScanRequest) -> UUID:
+        scan_id = uuid4()
+        status = ScanStatus(id=scan_id, state=ScanState.QUEUED)
+        with self._lock:
+            self._statuses[scan_id] = status
+        self._executor.submit(self._execute_scan, scan_id, request)
+        return scan_id
+
+    def get_status(self, scan_id: UUID) -> Optional[ScanStatus]:
+        with self._lock:
+            status = self._statuses.get(scan_id)
+        if status is None:
+            return None
+        return replace(status)
+
+    def get_outcome(self, scan_id: UUID) -> Optional[ScanOutcome]:
+        with self._lock:
+            outcome = self._outcomes.get(scan_id)
+        if outcome is None:
+            return None
+        return ScanOutcome(
+            results=list(outcome.results),
+            total_files=outcome.total_files,
+            matched_files=outcome.matched_files,
+        )
+
+    def snapshot(self, scan_id: UUID) -> tuple[Optional[ScanStatus], Optional[ScanOutcome]]:
+        with self._lock:
+            status = self._statuses.get(scan_id)
+            outcome = self._outcomes.get(scan_id)
+        status_copy = replace(status) if status is not None else None
+        outcome_copy = (
+            ScanOutcome(results=list(outcome.results), total_files=outcome.total_files, matched_files=outcome.matched_files)
+            if outcome is not None
+            else None
+        )
+        return status_copy, outcome_copy
+
+    def _execute_scan(self, scan_id: UUID, request: ScanRequest) -> None:
+        self._update_status(scan_id, state=ScanState.RUNNING)
+
+        def handle_progress(processed: int, total: int, matched: int) -> None:
+            self._update_status(scan_id, processed=processed, total=total, matched=matched)
+
+        try:
+            outcome = run_scan(request, progress_callback=handle_progress)
+        except Exception as exc:  # pragma: no cover - defensive logging
+            logger.exception("Scan %s failed: %s", scan_id, exc)
+            self._update_status(scan_id, state=ScanState.ERROR, message=str(exc))
+            return
+
+        with self._lock:
+            self._outcomes[scan_id] = outcome
+
+        self._update_status(
+            scan_id,
+            state=ScanState.COMPLETE,
+            processed=outcome.total_files,
+            total=outcome.total_files,
+            matched=outcome.matched_files,
+        )
+
+    def _update_status(self, scan_id: UUID, **updates) -> None:
+        with self._lock:
+            status = self._statuses.get(scan_id)
+            if status is None:
+                return
+            for field_name, value in updates.items():
+                setattr(status, field_name, value)
+            status.updated_at = datetime.now(timezone.utc)

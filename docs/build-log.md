@@ -1,4 +1,4 @@
-# Build Log
+﻿# Build Log
 
 Summarise each completed slice here. Include:
 - Date and slice ID.
@@ -20,3 +20,15 @@ Summarise each completed slice here. Include:
 - Hardened UX so non-HTMX submissions render the full page and preserve form values, ensuring the shortlist appears even if the CDN script fails.
 - Manual check: Launch uvicorn app.main:app --reload, submit the form against a directory of sample JPEGs, and confirm the shortlist updates or shows validation errors.
 - Follow-up: Move scan execution to background workers, stream progress, and generate thumbnails in later slices.
+
+## 2025-10-28 - Slice 2
+- Introduced an asynchronous `ScanManager` with background execution and status tracking (app/services/scan_manager.py) per docs/slices/slice-2.md and docs/tdd.md Interfaces section.
+- Updated FastAPI routes and HTMX workflow to enqueue scans, poll `/fragments/shortlist/{id}`, and expose `/api/scans/{id}` JSON status (app/main.py, app/templates/partials/shortlist.html).
+- Refined scanner progress to stream totals while enumerating files and broadened JPEG extension support (app/services/scanner.py, app/templates/partials/shortlist.html).
+- Expanded coverage with polling-focused tests for HTML and JSON clients plus incremental progress callbacks (tests/test_app.py, tests/test_scanner.py); ran `.venv\Scripts\python -m pytest`.
+- Manual check: Start `uvicorn app.main:app --reload`, submit a scan against a directory with sample JPEGs, observe the “Preparing scan” hand-off to incremental counts, and wait for the shortlist to refresh automatically.
+- Follow-up: Implement thumbnail generation/streaming and richer progress metrics in upcoming slices.
+
+
+
+

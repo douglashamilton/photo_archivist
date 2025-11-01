@@ -1,8 +1,10 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import date, datetime
+from dataclasses import dataclass, field
+from datetime import date, datetime, timezone
+from enum import Enum
 from pathlib import Path
+from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -42,3 +44,22 @@ class ScanOutcome:
     results: list[PhotoResult]
     total_files: int
     matched_files: int
+
+
+class ScanState(str, Enum):
+    QUEUED = "queued"
+    RUNNING = "running"
+    COMPLETE = "complete"
+    ERROR = "error"
+
+
+@dataclass(slots=True)
+class ScanStatus:
+    id: UUID
+    state: ScanState
+    processed: int = 0
+    total: int = 0
+    matched: int = 0
+    message: str | None = None
+    requested_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))

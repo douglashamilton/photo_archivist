@@ -1,4 +1,16 @@
-<section id="shortlist" aria-live="polite">
+{% set is_polling = scan_state in ["queued", "running"] %}
+<section
+  id="shortlist"
+  aria-live="polite"
+  data-scan-state="{{ scan_state }}"
+  {% if scan_id %}data-scan-id="{{ scan_id }}"{% endif %}
+  {% if is_polling and scan_id %}
+    hx-get="/fragments/shortlist/{{ scan_id }}"
+    hx-trigger="load, every 1s"
+    hx-target="#shortlist"
+    hx-swap="outerHTML"
+  {% endif %}
+>
   {% if errors %}
     <div class="error" role="alert">
       <h2>Scan request issue</h2>
@@ -7,6 +19,25 @@
           <li>{{ error }}</li>
         {% endfor %}
       </ul>
+    </div>
+  {% elif is_polling %}
+    <header>
+      <h2>Scan in progress</h2>
+      <p>
+        Processed
+        {{ progress.processed }}
+        of
+        {{ progress.total }}
+        JPEG files ({{ progress.matched }} matched so far).
+      </p>
+    </header>
+    <progress value="{{ progress.processed }}" max="{{ progress.total if progress.total else 1 }}">
+      {{ progress.processed }} / {{ progress.total }}
+    </progress>
+  {% elif scan_state == "error" %}
+    <div class="error" role="alert">
+      <h2>Scan failed</h2>
+      <p>{{ status_message or "An unexpected error occurred while scanning." }}</p>
     </div>
   {% elif results %}
     <header>

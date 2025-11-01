@@ -2,38 +2,57 @@ from __future__ import annotations
 
 from datetime import date, datetime, timezone
 from pathlib import Path
-from typing import Iterable
+from typing import Callable, Iterable, Optional
 
 from PIL import ExifTags, Image, ImageStat, UnidentifiedImageError
 
 from app.models import PhotoResult, ScanOutcome, ScanRequest
 
-ALLOWED_EXTENSIONS = {".jpg", ".jpeg"}
+ALLOWED_EXTENSIONS = (".jpg", ".jpeg", ".jpe", ".jfif")
 
 DATETIME_ORIGINAL_TAG = next(
     (tag for tag, name in ExifTags.TAGS.items() if name == "DateTimeOriginal"), None
 )
 
 
-def run_scan(request: ScanRequest) -> ScanOutcome:
+ProgressCallback = Callable[[int, int, int], None]
+
+
+def run_scan(request: ScanRequest, progress_callback: Optional[ProgressCallback] = None) -> ScanOutcome:
     """Traverse the directory, filter images by date, and return the top five by brightness."""
     total_files = 0
+    processed_files = 0
     matched_files = 0
     shortlist: list[PhotoResult] = []
 
+    if progress_callback:
+        progress_callback(processed_files, total_files, matched_files)
+
     for image_path in _iter_image_files(request.directory):
         total_files += 1
+        if progress_callback:
+            progress_callback(processed_files, total_files, matched_files)
+
         try:
             result = _process_image(image_path, request.start_date, request.end_date)
         except (UnidentifiedImageError, OSError):
             # Skip files that cannot be read as valid images.
+            processed_files += 1
+            if progress_callback:
+                progress_callback(processed_files, total_files, matched_files)
             continue
 
         if result is None:
+            processed_files += 1
+            if progress_callback:
+                progress_callback(processed_files, total_files, matched_files)
             continue
 
+        processed_files += 1
         matched_files += 1
         shortlist.append(result)
+        if progress_callback:
+            progress_callback(processed_files, total_files, matched_files)
 
     shortlist.sort(key=lambda item: item.brightness, reverse=True)
     return ScanOutcome(results=shortlist[:5], total_files=total_files, matched_files=matched_files)
@@ -41,8 +60,13 @@ def run_scan(request: ScanRequest) -> ScanOutcome:
 
 def _iter_image_files(directory: Path) -> Iterable[Path]:
     for path in directory.rglob("*"):
-        if path.is_file() and path.suffix.lower() in ALLOWED_EXTENSIONS:
+        if path.is_file() and _is_allowed_extension(path):
             yield path
+
+
+def _is_allowed_extension(path: Path) -> bool:
+    name = path.name.lower().strip()
+    return any(name.endswith(ext) for ext in ALLOWED_EXTENSIONS)
 
 
 def _process_image(
