@@ -10,6 +10,7 @@ from uuid import UUID, uuid4
 
 from app.models import ScanOutcome, ScanRequest, ScanState, ScanStatus
 from app.services.scanner import run_scan
+from app.services.thumbnails import ensure_thumbnails_for_results
 
 logger = logging.getLogger(__name__)
 
@@ -73,6 +74,12 @@ class ScanManager:
             logger.exception("Scan %s failed: %s", scan_id, exc)
             self._update_status(scan_id, state=ScanState.ERROR, message=str(exc))
             return
+
+        try:
+            ensure_thumbnails_for_results(scan_id, outcome.results)
+        except Exception as exc:  # pragma: no cover - defensive logging
+            logger.exception("Thumbnail generation failed for scan %s: %s", scan_id, exc)
+            self._update_status(scan_id, message="Some thumbnails could not be generated.")
 
         with self._lock:
             self._outcomes[scan_id] = outcome

@@ -1,5 +1,6 @@
 import os
 from datetime import date, datetime, timezone
+from uuid import UUID
 
 from PIL import Image
 
@@ -37,6 +38,8 @@ def test_run_scan_filters_by_date_and_limits_shortlist(tmp_path):
     assert filenames == ["bright.jpg", "medium.jpg"]
     assert all(photo.used_fallback for photo in outcome.results)
     assert outcome.results[0].brightness > outcome.results[1].brightness
+    assert all(isinstance(photo.id, UUID) for photo in outcome.results)
+    assert all(photo.thumbnail_path is None for photo in outcome.results)
 
 
 def test_run_scan_accepts_additional_jpeg_extensions(tmp_path):

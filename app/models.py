@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, timezone
 from enum import Enum
 from pathlib import Path
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -32,11 +32,33 @@ class ScanRequest(BaseModel):
 
 @dataclass(slots=True)
 class PhotoResult:
+    id: UUID
     path: Path
     filename: str
     captured_at: datetime
     brightness: float
     used_fallback: bool
+    thumbnail_path: Path | None = None
+    thumbnail_generated_at: datetime | None = None
+
+    @classmethod
+    def create(
+        cls,
+        *,
+        path: Path,
+        filename: str,
+        captured_at: datetime,
+        brightness: float,
+        used_fallback: bool,
+    ) -> "PhotoResult":
+        return cls(
+            id=uuid4(),
+            path=path,
+            filename=filename,
+            captured_at=captured_at,
+            brightness=brightness,
+            used_fallback=used_fallback,
+        )
 
 
 @dataclass(slots=True)

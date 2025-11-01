@@ -48,6 +48,17 @@
       {% for photo in results %}
         <li>
           <article class="result">
+            {% if scan_id and photo.thumbnail_path %}
+              <img
+                src="/api/thumbnails/{{ scan_id }}/{{ photo.id }}"
+                alt="Thumbnail preview of {{ photo.filename }}"
+                loading="lazy"
+                width="192"
+                height="192"
+              />
+            {% elif scan_id %}
+              <p class="thumbnail-fallback">Thumbnail unavailable.</p>
+            {% endif %}
             <header>
               <h3>{{ photo.filename }}</h3>
             </header>

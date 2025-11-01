@@ -4,7 +4,7 @@ from typing import Any, Dict, Optional
 from uuid import UUID
 
 from fastapi import FastAPI, Form, HTTPException, Request, status
-from fastapi.responses import HTMLResponse, JSONResponse, Response
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
@@ -140,6 +140,20 @@ async def shortlist_fragment(request: Request, scan_id: UUID) -> HTMLResponse:
     return templates.TemplateResponse(request, "partials/shortlist.html", context)
 
 
+@app.get("/api/thumbnails/{scan_id}/{photo_id}")
+async def get_thumbnail(scan_id: UUID, photo_id: UUID) -> Response:
+    """Stream a generated thumbnail image for a shortlisted photo."""
+    outcome = scan_manager.get_outcome(scan_id)
+    if outcome is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Scan not found.")
+
+    photo = next((item for item in outcome.results if item.id == photo_id), None)
+    if photo is None or photo.thumbnail_path is None or not photo.thumbnail_path.exists():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Thumbnail not available.")
+
+    return FileResponse(path=photo.thumbnail_path, media_type="image/jpeg")
+
+
 def _build_context(
     request: Request,
     *,
@@ -197,11 +211,16 @@ def _serialize_status(status: Optional[ScanStatus], outcome: Optional[ScanOutcom
     if outcome and status.state == ScanState.COMPLETE:
         results_payload = [
             {
+                "id": str(photo.id),
                 "filename": photo.filename,
                 "captured_at": photo.captured_at.isoformat(),
                 "brightness": photo.brightness,
                 "used_fallback": photo.used_fallback,
                 "path": str(photo.path),
+                "thumbnail_url": f"/api/thumbnails/{status.id}/{photo.id}" if photo.thumbnail_path else None,
+                "thumbnail_generated_at": photo.thumbnail_generated_at.isoformat()
+                if photo.thumbnail_generated_at is not None
+                else None,
             }
             for photo in outcome.results
         ]

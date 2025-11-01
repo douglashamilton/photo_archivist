@@ -82,7 +82,7 @@ def _process_image(
         grayscale = image.convert("L")
         brightness = float(ImageStat.Stat(grayscale).mean[0])
 
-    return PhotoResult(
+    return PhotoResult.create(
         path=image_path,
         filename=image_path.name,
         captured_at=captured_at,

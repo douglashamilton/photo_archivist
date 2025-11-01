@@ -18,6 +18,7 @@ def _create_image(path, color, modified_at: datetime) -> None:
 
 
 SCAN_ID_PATTERN = re.compile(r'data-scan-id="([^"]+)"')
+THUMBNAIL_SRC_PATTERN = re.compile(r'src="/api/thumbnails/([^/]+)/([^"]+)"')
 
 
 def _extract_scan_id(html: str) -> str:
@@ -47,6 +48,7 @@ async def test_post_scans_returns_polling_partial_and_results(tmp_path) -> None:
     _create_image(bright_path, (255, 255, 255), datetime(2024, 1, 10, tzinfo=timezone.utc))
     _create_image(dim_path, (64, 64, 64), datetime(2024, 1, 11, tzinfo=timezone.utc))
 
+    os.environ["PHOTO_ARCHIVIST_THUMBNAIL_DIR"] = str(tmp_path / "thumbs")
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://testserver") as client:
         response = await client.post(
@@ -78,6 +80,17 @@ async def test_post_scans_returns_polling_partial_and_results(tmp_path) -> None:
         assert "Matched 2 of 2 JPEG files." in result_html
         assert "bright.jpg" in result_html
         assert "dim.jpg" in result_html
+        assert '/api/thumbnails/' in result_html
+
+        thumb_match = THUMBNAIL_SRC_PATTERN.search(result_html)
+        assert thumb_match, "Expected thumbnail src in HTML fragment"
+        thumb_scan_id, photo_id = thumb_match.groups()
+        assert thumb_scan_id == scan_id
+
+        thumbnail_url = f"/api/thumbnails/{thumb_scan_id}/{photo_id}"
+        thumbnail_response = await client.get(thumbnail_url)
+        assert thumbnail_response.status_code == 200
+        assert thumbnail_response.headers["content-type"] == "image/jpeg"
 
 
 @pytest.mark.asyncio
@@ -105,6 +118,7 @@ async def test_post_scans_without_htmx_returns_full_page(tmp_path) -> None:
     bright_path = tmp_path / "bright.jpg"
     _create_image(bright_path, (200, 200, 200), datetime(2024, 1, 10, tzinfo=timezone.utc))
 
+    os.environ["PHOTO_ARCHIVIST_THUMBNAIL_DIR"] = str(tmp_path / "thumbs")
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://testserver") as client:
         response = await client.post(
@@ -128,6 +142,7 @@ async def test_post_scans_without_htmx_returns_full_page(tmp_path) -> None:
             fragment = await client.get(f"/fragments/shortlist/{scan_id}")
             if "Top 1 photo" in fragment.text or "Top 1 photos" in fragment.text:
                 assert "bright.jpg" in fragment.text
+                assert '/api/thumbnails/' in fragment.text
                 break
             await asyncio.sleep(0.05)
         else:
@@ -139,6 +154,7 @@ async def test_api_scan_status_endpoint_returns_json(tmp_path) -> None:
     bright_path = tmp_path / "bright.jpg"
     _create_image(bright_path, (220, 220, 220), datetime(2024, 1, 12, tzinfo=timezone.utc))
 
+    os.environ["PHOTO_ARCHIVIST_THUMBNAIL_DIR"] = str(tmp_path / "thumbs")
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://testserver") as client:
         post_response = await client.post(
@@ -168,3 +184,4 @@ async def test_api_scan_status_endpoint_returns_json(tmp_path) -> None:
 
         assert status_payload["summary"]["matched_files"] == 1
         assert status_payload["results"][0]["filename"] == "bright.jpg"
+        assert status_payload["results"][0]["thumbnail_url"] is not None
