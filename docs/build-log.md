@@ -37,5 +37,13 @@ Summarise each completed slice here. Include:
 - Manual check: Launch `uvicorn app.main:app --reload`, run a scan against a directory with sample JPEGs, and confirm each shortlist entry displays its corresponding thumbnail image in the browser.
 - Follow-up: Plan a later slice to clean up cached thumbnails post-scan and surface thumbnail generation progress in status updates.
 
+## 2025-11-01 - Slice 4
+- Added shortlist selection state to `PhotoResult` and persisted it within `ScanManager`, aligning with docs/slices/slice-4.md and the TDD domain model.
+- Introduced `/api/scans/{scan_id}/photos/{photo_id}/selection` to toggle selection, refreshing either the HTMX fragment or JSON payload, and adjusted serializers to expose the new flag (app/main.py, app/services/scan_manager.py).
+- Updated the shortlist UI with select/deselect controls and visual feedback for chosen photos (app/templates/partials/shortlist.html, app/templates/index.html).
+- Expanded tests to cover selection toggling in both HTML and JSON flows; ran `.venv\Scripts\python.exe -m pytest`.
+- Manual check: Run `uvicorn app.main:app --reload`, scan a directory with multiple photos, toggle selection for any shortlist item, and confirm the button/indicator swaps between “Select” and “Deselect” without rerunning the scan.
+- Follow-up: Evaluate later whether a bulk “clear selections” control or persistence across sessions is needed.
+
 
 

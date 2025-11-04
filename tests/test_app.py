@@ -19,6 +19,7 @@ def _create_image(path, color, modified_at: datetime) -> None:
 
 SCAN_ID_PATTERN = re.compile(r'data-scan-id="([^"]+)"')
 THUMBNAIL_SRC_PATTERN = re.compile(r'src="/api/thumbnails/([^/]+)/([^"]+)"')
+SELECTION_FORM_PATTERN = re.compile(r'action="/api/scans/([^/]+)/photos/([^/]+)/selection"')
 
 
 def _extract_scan_id(html: str) -> str:
@@ -150,6 +151,60 @@ async def test_post_scans_without_htmx_returns_full_page(tmp_path) -> None:
 
 
 @pytest.mark.asyncio
+async def test_toggle_selection_updates_html_and_json(tmp_path) -> None:
+    photo_path = tmp_path / "photo.jpg"
+    _create_image(photo_path, (180, 180, 180), datetime(2024, 1, 10, tzinfo=timezone.utc))
+
+    os.environ["PHOTO_ARCHIVIST_THUMBNAIL_DIR"] = str(tmp_path / "thumbs")
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        post_response = await client.post(
+            "/api/scans",
+            data={
+                "directory": str(tmp_path),
+                "start_date": "2024-01-01",
+                "end_date": "2024-01-31",
+            },
+            headers={"HX-Request": "true"},
+        )
+        assert post_response.status_code == 202
+        scan_id = _extract_scan_id(post_response.text)
+
+        for _ in range(10):
+            fragment = await client.get(f"/fragments/shortlist/{scan_id}")
+            if "Top 1 photo" in fragment.text or "Top 1 photos" in fragment.text:
+                shortlist_html = fragment.text
+                break
+            await asyncio.sleep(0.05)
+        else:
+            pytest.fail("Scan did not complete in time")
+
+        form_match = SELECTION_FORM_PATTERN.search(shortlist_html)
+        assert form_match, "Expected selection form in shortlist"
+        action_scan_id, photo_id = form_match.groups()
+        assert action_scan_id == scan_id
+
+        select_response = await client.post(
+            f"/api/scans/{scan_id}/photos/{photo_id}/selection",
+            data={"selected": "true"},
+            headers={"HX-Request": "true"},
+        )
+        assert select_response.status_code == 200
+        assert "Selected</span>" in select_response.text
+        assert 'aria-pressed="true"' in select_response.text
+
+        deselect_response = await client.post(
+            f"/api/scans/{scan_id}/photos/{photo_id}/selection",
+            data={"selected": "false"},
+            headers={"accept": "application/json"},
+        )
+        assert deselect_response.status_code == 200
+        payload = deselect_response.json()
+        assert payload["state"] == "complete"
+        assert payload["results"][0]["selected"] is False
+
+
+@pytest.mark.asyncio
 async def test_api_scan_status_endpoint_returns_json(tmp_path) -> None:
     bright_path = tmp_path / "bright.jpg"
     _create_image(bright_path, (220, 220, 220), datetime(2024, 1, 12, tzinfo=timezone.utc))
@@ -185,3 +240,4 @@ async def test_api_scan_status_endpoint_returns_json(tmp_path) -> None:
         assert status_payload["summary"]["matched_files"] == 1
         assert status_payload["results"][0]["filename"] == "bright.jpg"
         assert status_payload["results"][0]["thumbnail_url"] is not None
+        assert status_payload["results"][0]["selected"] is False

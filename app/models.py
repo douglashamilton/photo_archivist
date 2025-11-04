@@ -40,6 +40,7 @@ class PhotoResult:
     used_fallback: bool
     thumbnail_path: Path | None = None
     thumbnail_generated_at: datetime | None = None
+    selected: bool = False
 
     @classmethod
     def create(

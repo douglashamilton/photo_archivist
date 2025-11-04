@@ -47,7 +47,7 @@
     <ol>
       {% for photo in results %}
         <li>
-          <article class="result">
+          <article class="result{% if photo.selected %} selected{% endif %}">
             {% if scan_id and photo.thumbnail_path %}
               <img
                 src="/api/thumbnails/{{ scan_id }}/{{ photo.id }}"
@@ -68,6 +68,27 @@
               {% if photo.used_fallback %}(file modified time fallback){% endif %}
             </p>
             <p>Brightness score: {{ "%.1f"|format(photo.brightness) }}</p>
+            <div class="controls">
+              {% if photo.selected %}
+                <span class="selection-status">Selected</span>
+              {% endif %}
+              <form
+                action="/api/scans/{{ scan_id }}/photos/{{ photo.id }}/selection"
+                method="post"
+                hx-post="/api/scans/{{ scan_id }}/photos/{{ photo.id }}/selection"
+                hx-target="#shortlist"
+                hx-swap="outerHTML"
+              >
+                <input type="hidden" name="selected" value="{{ "false" if photo.selected else "true" }}" />
+                <button
+                  type="submit"
+                  class="{% if photo.selected %}secondary{% else %}primary{% endif %}"
+                  aria-pressed="{{ 'true' if photo.selected else 'false' }}"
+                >
+                  {% if photo.selected %}Deselect{% else %}Select{% endif %}
+                </button>
+              </form>
+            </div>
           </article>
         </li>
       {% endfor %}

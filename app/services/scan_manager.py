@@ -100,3 +100,31 @@ class ScanManager:
             for field_name, value in updates.items():
                 setattr(status, field_name, value)
             status.updated_at = datetime.now(timezone.utc)
+
+    def set_selection(
+        self, scan_id: UUID, photo_id: UUID, selected: bool
+    ) -> tuple[Optional[ScanStatus], Optional[ScanOutcome], bool]:
+        with self._lock:
+            status = self._statuses.get(scan_id)
+            outcome = self._outcomes.get(scan_id)
+            if status is None or outcome is None:
+                return None, None, False
+
+            target = next((item for item in outcome.results if item.id == photo_id), None)
+            if target is None:
+                return replace(status), ScanOutcome(
+                    results=list(outcome.results),
+                    total_files=outcome.total_files,
+                    matched_files=outcome.matched_files,
+                ), False
+
+            target.selected = selected
+            return (
+                replace(status),
+                ScanOutcome(
+                    results=list(outcome.results),
+                    total_files=outcome.total_files,
+                    matched_files=outcome.matched_files,
+                ),
+                True,
+            )

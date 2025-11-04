@@ -122,6 +122,38 @@ async def get_scan(scan_id: UUID) -> Response:
     return JSONResponse(_serialize_status(status_snapshot, outcome_snapshot))
 
 
+@app.post("/api/scans/{scan_id}/photos/{photo_id}/selection")
+async def update_photo_selection(
+    request: Request,
+    scan_id: UUID,
+    photo_id: UUID,
+    selected: bool = Form(...),
+) -> Response:
+    """Toggle selection state for a shortlisted photo."""
+    status_snapshot, outcome_snapshot, updated = scan_manager.set_selection(scan_id, photo_id, selected)
+    if status_snapshot is None or outcome_snapshot is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Scan not found.")
+    if not updated:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Photo not found in shortlist.")
+
+    context = _build_context(
+        request,
+        form_values={"directory": "", "start_date": "", "end_date": ""},
+        errors=[],
+        scan_attempted=True,
+        status=status_snapshot,
+        outcome=outcome_snapshot,
+    )
+
+    if _wants_json(request):
+        return JSONResponse(_serialize_status(status_snapshot, outcome_snapshot))
+
+    if request.headers.get("hx-request") == "true":
+        return templates.TemplateResponse(request, "partials/shortlist.html", context)
+
+    return templates.TemplateResponse(request, "index.html", context)
+
+
 @app.get("/fragments/shortlist/{scan_id}", response_class=HTMLResponse)
 async def shortlist_fragment(request: Request, scan_id: UUID) -> HTMLResponse:
     """Serve the shortlist fragment for HTMX polling."""
@@ -221,6 +253,7 @@ def _serialize_status(status: Optional[ScanStatus], outcome: Optional[ScanOutcom
                 "thumbnail_generated_at": photo.thumbnail_generated_at.isoformat()
                 if photo.thumbnail_generated_at is not None
                 else None,
+                "selected": photo.selected,
             }
             for photo in outcome.results
         ]

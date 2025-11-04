@@ -11,6 +11,29 @@
       integrity="sha384-k6RkNyKpTXN9ud8N6buhfOB/4lR8h5wzGAXyVw4Ja7+q62SMbVRHZmh9SZnNINRl"
       crossorigin="anonymous"
     />
+    <style>
+      .result {
+        display: grid;
+        gap: 0.5rem;
+      }
+      .result.selected {
+        border: 2px solid #0d6efd;
+        border-radius: 0.75rem;
+        padding: 0.75rem;
+      }
+      .result img {
+        border-radius: 0.5rem;
+      }
+      .result .controls {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+      }
+      .result .selection-status {
+        font-weight: 600;
+        color: #0d6efd;
+      }
+    </style>
   </head>
   <body>
     <main class="container">
