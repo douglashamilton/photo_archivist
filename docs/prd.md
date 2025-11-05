@@ -2,7 +2,7 @@
 
 ### Bottom line
 
-Build Photo Archivist as a lightweight, local Python web app that lets a user choose a photo directory, filter images by date, score each image by brightness, and immediately display the top five thumbnails for quick review.
+Build Photo Archivist as a lightweight, local Python web app that lets a user choose a photo directory, filter images by date, score each image by brightness, display the top five thumbnails for quick review, and fire-and-forget a 4×6" print order for any (or all) shortlisted photos via the Prodigi (Pwinty) print API sandbox.
 
 ### Problem Statement
 
@@ -27,6 +27,7 @@ People with large local photo libraries struggle to surface highlights from spec
 * Given a local photo library, when I select a root directory and provide a start and end date, then the app scans and shows only images in that range.
 * Given the filtered results, when the app finishes scoring, then I immediately see thumbnails for the top five brightest images so I can decide what to do next.
 * Given the shortlist, when I adjust the date range, then the app rescans and replaces the shortlist with updated thumbnails.
+* Given a shortlist, when I select one or more photos and choose to print them, then the app submits a 4×6" print order to the Prodigi sandbox and confirms the order reference.
 
 ### Must-Have Features (MVP)
 
@@ -36,6 +37,7 @@ People with large local photo libraries struggle to surface highlights from spec
 * Automatic selection and display of the five highest-scoring thumbnails with filename, capture date, and score.
 * Clear shortlist count and ability to rerun the pipeline when the user changes the date window.
 * Automated tests covering date filtering, metadata fallback, brightness scoring, and shortlist selection rules.
+* Fire-and-forget order submission for selected shortlist photos to the Prodigi print API sandbox using temporary public asset URLs, capturing the returned order reference for user feedback.
 
 ### Nice-to-Have Features
 
@@ -43,7 +45,7 @@ People with large local photo libraries struggle to surface highlights from spec
 
 ### Non-functional Requirements
 
-* Runs entirely on the user's machine; no network calls required for core workflows.
+* Runs entirely on the user's machine; outbound network calls limited to the Prodigi print API for order submission.
 * Built with Python 3.12+ using a minimal web stack (for example, FastAPI plus a lightweight front end).
 * Responds with the shortlist within a reasonable time for medium libraries (benchmark: 5,000 images in under 30 seconds on a modern laptop).
 * Works in current desktop browsers (Chromium, Firefox, Safari).
@@ -54,6 +56,7 @@ People with large local photo libraries struggle to surface highlights from spec
 * Non-image files must be skipped quickly to keep scans fast.
 * MVP targets JPEG (.jpg) files; other formats are ignored.
 * Brightness scoring can use mean pixel luminance and should be isolated for future metric swaps.
+* Print orders require HTTPS-accessible temporary URLs for each original-resolution asset; thumbnails are insufficient for fulfillment.
 
 ### Acceptance Criteria
 
@@ -61,13 +64,15 @@ People with large local photo libraries struggle to surface highlights from spec
 * Only images inside the date range are included in scoring.
 * Exactly five images with the highest brightness scores are shown with thumbnails, file names, capture dates, and scores.
 * Updating the date range reruns the scan and refreshes the shortlist without a page reload.
-* Automated tests for filtering and scoring logic run successfully.
+* Submitting a print request for a subset of shortlist photos creates a Prodigi sandbox order with the `GLOBAL-PRINT-4X6` (or equivalent) SKU, returning an order identifier and indicating success/failure to the user.
+* Automated tests for filtering, scoring logic, shortlist selection, and order payload construction run successfully.
 
 ### Risks & Mitigations
 
 * Missing EXIF data could exclude valid photos -> fall back to file modified time and flag when the fallback occurs.
 * Large directories might slow scans -> stream progress feedback and set expectations in the UI.
 * Brightness may not reflect perceived quality -> encapsulate scoring so alternative metrics can replace it with minimal changes.
+* External print API outages or credential misconfiguration could block orders -> surface order failures with actionable error messages and allow retry.
 
 ### Out-of-Scope
 
@@ -80,6 +85,8 @@ People with large local photo libraries struggle to surface highlights from spec
 * Users can navigate their filesystem via a standard directory picker.
 * The local machine has enough resources to scan the selected directory.
 * Brightness scoring is acceptable as the initial quality proxy.
+* Users supply their own Prodigi API key and have pre-configured payment details; MVP relies on the Prodigi sandbox for testing.
+* The app can expose temporary HTTPS URLs for selected assets (for example, through an ephemeral file-sharing service or user-provided hosting).
 
 ### Open questions (answer before planning)
 
