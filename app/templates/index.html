@@ -80,7 +80,10 @@
         </div>
         <button type="submit">Scan photos</button>
       </form>
-      {% include "partials/shortlist.html" %}
+      <div id="scan-results">
+        {% include "partials/shortlist.html" %}
+        {% include "partials/print_controls.html" %}
+      </div>
     </main>
   </body>
 </html>

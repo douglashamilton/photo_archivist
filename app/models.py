@@ -4,9 +4,10 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, timezone
 from enum import Enum
 from pathlib import Path
+from typing import Any
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 
 
 class ScanRequest(BaseModel):
@@ -86,3 +87,88 @@ class ScanStatus:
     message: str | None = None
     requested_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class PrintAddress(BaseModel):
+    line1: str
+    line2: str | None = None
+    city: str
+    state: str | None = None
+    postal_code: str
+    country_code: str = Field(..., min_length=2, max_length=2, description="ISO 3166-1 alpha-2 code")
+
+    @field_validator("line1", "city", "postal_code")
+    @classmethod
+    def _must_not_be_blank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("Field cannot be blank.")
+        return value
+
+    @field_validator("state")
+    @classmethod
+    def _normalize_state(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        result = value.strip()
+        return result or None
+
+    @field_validator("country_code")
+    @classmethod
+    def _uppercase_country(cls, value: str) -> str:
+        code = value.strip().upper()
+        if len(code) != 2 or not code.isalpha():
+            raise ValueError("Country code must be a two-letter ISO code.")
+        return code
+
+
+class PrintRecipient(BaseModel):
+    name: str
+    email: EmailStr
+    address: PrintAddress
+
+    @field_validator("name")
+    @classmethod
+    def _name_not_blank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("Recipient name is required.")
+        return value
+
+
+class PrintOrderRequest(BaseModel):
+    scan_id: UUID
+    photo_ids: list[UUID]
+    recipient: PrintRecipient
+    shipping_method: str = Field(default="STANDARD")
+    copies: int = Field(default=1, ge=1, le=10)
+    asset_base_url: str | None = Field(default=None, description="HTTPS base URL for published assets")
+    api_key: str | None = Field(default=None, description="Prodigi API key")
+
+    @field_validator("photo_ids")
+    @classmethod
+    def _require_photo_ids(cls, value: list[UUID]) -> list[UUID]:
+        if not value:
+            raise ValueError("At least one photo must be selected for printing.")
+        return value
+
+    @field_validator("shipping_method")
+    @classmethod
+    def _shipping_not_blank(cls, value: str) -> str:
+        method = value.strip().upper()
+        if not method:
+            raise ValueError("Shipping method is required.")
+        return method
+
+    @field_validator("asset_base_url", mode="before")
+    @classmethod
+    def _normalize_asset_base(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        cleaned = value.strip()
+        return cleaned or None
+
+
+@dataclass(slots=True)
+class PrintOrderSubmission:
+    order_id: str
+    status: str
+    raw_response: dict[str, Any] | None = None

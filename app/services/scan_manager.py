@@ -8,7 +8,7 @@ from threading import Lock
 from typing import Optional
 from uuid import UUID, uuid4
 
-from app.models import ScanOutcome, ScanRequest, ScanState, ScanStatus
+from app.models import PhotoResult, ScanOutcome, ScanRequest, ScanState, ScanStatus
 from app.services.scanner import run_scan
 from app.services.thumbnails import ensure_thumbnails_for_results
 
@@ -49,6 +49,13 @@ class ScanManager:
             total_files=outcome.total_files,
             matched_files=outcome.matched_files,
         )
+
+    def get_selected_results(self, scan_id: UUID) -> list[PhotoResult]:
+        with self._lock:
+            outcome = self._outcomes.get(scan_id)
+            if outcome is None:
+                return []
+            return [photo for photo in outcome.results if photo.selected]
 
     def snapshot(self, scan_id: UUID) -> tuple[Optional[ScanStatus], Optional[ScanOutcome]]:
         with self._lock:

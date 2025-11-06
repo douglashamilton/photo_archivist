@@ -42,8 +42,15 @@ Summarise each completed slice here. Include:
 - Introduced `/api/scans/{scan_id}/photos/{photo_id}/selection` to toggle selection, refreshing either the HTMX fragment or JSON payload, and adjusted serializers to expose the new flag (app/main.py, app/services/scan_manager.py).
 - Updated the shortlist UI with select/deselect controls and visual feedback for chosen photos (app/templates/partials/shortlist.html, app/templates/index.html).
 - Expanded tests to cover selection toggling in both HTML and JSON flows; ran `.venv\Scripts\python.exe -m pytest`.
-- Manual check: Run `uvicorn app.main:app --reload`, scan a directory with multiple photos, toggle selection for any shortlist item, and confirm the button/indicator swaps between “Select” and “Deselect” without rerunning the scan.
-- Follow-up: Evaluate later whether a bulk “clear selections” control or persistence across sessions is needed.
+- Manual check: Run `uvicorn app.main:app --reload`, scan a directory with multiple photos, toggle selection for any shortlist item, and confirm the button/indicator swaps between "Select" and "Deselect" without rerunning the scan.
+- Follow-up: Evaluate later whether a bulk "clear selections" control or persistence across sessions is needed.
+
+## 2025-11-06 - Slice 5
+- Introduced a `PrintOrderService` with payload construction and Prodigi submission plumbing plus `/api/prints` form/JSON handling, supporting configurable asset host and API key (app/services/print_orders.py, app/main.py, app/models.py).
+- Added a print controls partial with recipient form, selection-aware hidden fields, and HTMX refresh triggers so users can submit selected photos for printing (app/templates/index.html, app/templates/partials/print_controls.html).
+- Updated dependencies to include `httpx` and `email-validator`, and extended test coverage for print submission flows (tests/test_app.py); ran `.venv\Scripts\python.exe -m pytest`.
+- Manual check: Run `uvicorn app.main:app --reload`, complete a scan, select shortlist photos, fill the print form with recipient, asset base URL, and Prodigi key, then verify the success banner shows an order reference.
+- Follow-up: Implement real asset publishing for HTTPS-accessible originals and hook up Prodigi status polling in a subsequent slice.
 
 
 
