@@ -48,9 +48,25 @@ Summarise each completed slice here. Include:
 ## 2025-11-06 - Slice 5
 - Introduced a `PrintOrderService` with payload construction and Prodigi submission plumbing plus `/api/prints` form/JSON handling, supporting configurable asset host and API key (app/services/print_orders.py, app/main.py, app/models.py).
 - Added a print controls partial with recipient form, selection-aware hidden fields, and HTMX refresh triggers so users can submit selected photos for printing (app/templates/index.html, app/templates/partials/print_controls.html).
-- Updated dependencies to include `httpx` and `email-validator`, and extended test coverage for print submission flows (tests/test_app.py); ran `.venv\Scripts\python.exe -m pytest`.
-- Manual check: Run `uvicorn app.main:app --reload`, complete a scan, select shortlist photos, fill the print form with recipient, asset base URL, and Prodigi key, then verify the success banner shows an order reference.
-- Follow-up: Implement real asset publishing for HTTPS-accessible originals and hook up Prodigi status polling in a subsequent slice.
+- Hardened UX for HTMX submissions so even Prodigi failures return the refreshed partial rather than surfacing 4xx/5xx blank states (app/main.py, tests/test_app.py).
+- Eliminated HTMX swap errors by moving the refresh behavior onto the `section#print-controls` element so fragments can replace themselves cleanly (app/templates/partials/print_controls.html).
+- Normalised the Prodigi API key input, asserted outgoing requests include Prodigi’s expected `X-API-Key` header, and added a stdlib HTTPS fallback so Windows/Python 3.13 environments that hit the `httpcore`/`IntEnum` import bug can still submit orders (app/models.py, app/services/print_orders.py, tests/test_app.py).
+- Updated dependencies to include `httpx` and `email-validator`, and extended test coverage for print submission flows plus error states; ran `.venv\Scripts\python.exe -m pytest`.
+- Manual check: Run `uvicorn app.main:app --reload`, complete a scan, select shortlist photos, fill the print form (including a valid sandbox API key), and confirm either a success banner with an order reference or an inline error panel with Prodigi’s message.
+- Follow-up: Implement real asset publishing for HTTPS-accessible originals, hook up Prodigi status polling, and consider mirroring the HTMX response helper on other form endpoints if similar issues arise.
 
+## 2025-11-07 - Slice 6
+- Scope: docs/slices/slice-6.md tightened the print refresh flow so it can’t crash during HTMX validation.
+- Updated `app/templates/partials/print_controls.html` so the `hx-vals` expression pulls the scan id from the DOM via `document.getElementById(...)` when an event detail is missing, eliminating the `Cannot read properties of undefined (reading 'scanId')` error surfaced in the browser console.
+- Added a regression assertion to `tests/test_app.py::test_print_controls_fragment_requires_scan_id` to lock in the new fallback.
+- Automated: `.venv\Scripts\python.exe -m pytest`.
+- Manual check: Launch `uvicorn app.main:app --reload`, run a scan, select at least one photo, open the browser console, submit the print form, and confirm the fragment refresh completes without HTMX errors.
 
+## 2025-11-08 - Slice 7
+- Scope: docs/slices/slice-7.md adds Prodigi exchange diagnostics so failed print orders can be debugged without digging through server logs.
+- Extended `ProdigiAPIError` and `PrintOrderService` to capture sanitized request and response details, propagating them through `/api/prints` responses and HTMX feedback (`app/services/print_orders.py`, `app/main.py`).
+- Corrected the outbound header to `X-API-Key` (Prodigi’s expected name) and aligned the automated tests with the new casing so sandbox submissions authenticate again.
+- Updated the print controls partial with a collapsible debug block that renders the captured payloads, giving operators immediate visibility into what Prodigi saw (`app/templates/partials/print_controls.html`).
+- Added API/HTML coverage to assert the debug contract plus the existing Prodigi error path, and ran `.venv\Scripts\python.exe -m pytest` (`tests/test_app.py`).
+- Manual check: Trigger a failing print submission (e.g., send an invalid API key), expand the “Prodigi debug details” panel, and confirm the request/response JSON matches expectations.
 

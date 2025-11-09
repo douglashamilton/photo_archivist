@@ -3,15 +3,13 @@
   id="print-controls"
   aria-live="polite"
   {% if scan_id %}data-scan-id="{{ scan_id }}"{% endif %}
+  hx-target="this"
+  hx-swap="outerHTML"
+  hx-trigger="print-refresh from:body"
+  hx-get="/fragments/print"
+  hx-vals="js:{scan_id: (event.detail && event.detail.scan_id) || (document.getElementById('print-controls')?.dataset?.scanId) || null}"
 >
-  <div
-    class="print-controls-fragment"
-    hx-target="#print-controls"
-    hx-swap="outerHTML"
-    hx-trigger="print-refresh from:body"
-    hx-get="/fragments/print"
-    hx-vals="js:{scan_id: (event.detail && event.detail.scan_id) || (document.querySelector('#print-controls')?.dataset.scanId) || null}"
-  >
+  <div class="print-controls-fragment">
     <header>
       <h2>Print selected photos</h2>
     </header>
@@ -31,6 +29,19 @@
             <li>{{ message }}</li>
           {% endfor %}
         </ul>
+        {% if print_feedback.debug %}
+          <details class="prodigi-debug">
+            <summary>Prodigi debug details</summary>
+            <div>
+              <h4>Request payload</h4>
+              <pre>{{ print_feedback.debug.request | tojson(indent=2) }}</pre>
+            </div>
+            <div>
+              <h4>Response</h4>
+              <pre>{{ print_feedback.debug.response | tojson(indent=2) }}</pre>
+            </div>
+          </details>
+        {% endif %}
       </article>
     {% endif %}
 

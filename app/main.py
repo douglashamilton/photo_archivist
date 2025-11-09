@@ -301,8 +301,11 @@ async def submit_print_order(request: Request) -> Response:
                 headers=_print_refresh_headers(order_request.scan_id),
             )
         except ProdigiAPIError as exc:
+            payload = {"errors": [str(exc)], "status": "error"}
+            if getattr(exc, "debug", None):
+                payload["debug"] = exc.debug
             return JSONResponse(
-                {"errors": [str(exc)], "status": "error"},
+                payload,
                 status_code=status.HTTP_502_BAD_GATEWAY,
                 headers=_print_refresh_headers(order_request.scan_id),
             )
@@ -347,7 +350,7 @@ async def submit_print_order(request: Request) -> Response:
     selected_photo_ids: list[UUID] = []
     form_photo_ids: list[str] = []
     if hasattr(form, "getlist"):
-        form_photo_ids = [value for value in form.getlist("photo_ids") if value]
+        form_photo_ids = [str(value) for value in form.getlist("photo_ids") if value]
 
     if form_photo_ids:
         try:
@@ -403,7 +406,7 @@ async def submit_print_order(request: Request) -> Response:
             request,
             "partials/print_controls.html",
             context,
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=_htmx_response_status(request, status.HTTP_400_BAD_REQUEST),
             headers=_print_refresh_headers(scan_id),
         )
 
@@ -427,7 +430,7 @@ async def submit_print_order(request: Request) -> Response:
             request,
             "partials/print_controls.html",
             context,
-            status_code=status.HTTP_404_NOT_FOUND,
+            status_code=_htmx_response_status(request, status.HTTP_404_NOT_FOUND),
             headers=_print_refresh_headers(scan_id),
         )
     except (PrintOrderConfigurationError, NoSelectedPhotosError) as exc:
@@ -446,11 +449,13 @@ async def submit_print_order(request: Request) -> Response:
             request,
             "partials/print_controls.html",
             context,
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=_htmx_response_status(request, status.HTTP_400_BAD_REQUEST),
             headers=_print_refresh_headers(scan_id),
         )
     except ProdigiAPIError as exc:
         feedback = {"status": "error", "errors": [str(exc)]}
+        if getattr(exc, "debug", None):
+            feedback["debug"] = exc.debug
         context = _build_context(
             request,
             form_values={"directory": "", "start_date": "", "end_date": ""},
@@ -465,7 +470,7 @@ async def submit_print_order(request: Request) -> Response:
             request,
             "partials/print_controls.html",
             context,
-            status_code=status.HTTP_502_BAD_GATEWAY,
+            status_code=_htmx_response_status(request, status.HTTP_502_BAD_GATEWAY),
             headers=_print_refresh_headers(scan_id),
         )
     except PrintOrderError as exc:
@@ -484,7 +489,7 @@ async def submit_print_order(request: Request) -> Response:
             request,
             "partials/print_controls.html",
             context,
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=_htmx_response_status(request, status.HTTP_500_INTERNAL_SERVER_ERROR),
             headers=_print_refresh_headers(scan_id),
         )
 
@@ -632,10 +637,21 @@ def _serialize_status(status: Optional[ScanStatus], outcome: Optional[ScanOutcom
 
 
 def _wants_json(request: Request) -> bool:
-    if request.headers.get("hx-request") == "true":
+    if _is_htmx(request):
         return False
     accept = request.headers.get("accept") or ""
     return "application/json" in accept.lower()
+
+
+def _is_htmx(request: Request) -> bool:
+    return request.headers.get("hx-request") == "true"
+
+
+def _htmx_response_status(request: Request, fallback_status: int) -> int:
+    if _is_htmx(request):
+        return status.HTTP_200_OK
+    return fallback_status
+
 def _print_refresh_headers(scan_id: Optional[UUID]) -> Dict[str, str]:
     if scan_id is None:
         return {}

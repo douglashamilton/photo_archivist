@@ -10,6 +10,7 @@ from httpx import ASGITransport, AsyncClient, MockTransport
 from PIL import Image
 
 from app.main import app, print_order_service
+from app.services import print_orders
 from urllib.parse import urlencode
 
 
@@ -289,9 +290,11 @@ async def test_post_prints_accepts_json_payload(tmp_path) -> None:
         assert toggle_response.status_code == 200
 
         captured_payloads: list[dict[str, object]] = []
+        captured_headers: list[str] = []
 
         async def handler(request: httpx.Request) -> httpx.Response:
             captured_payloads.append(json.loads(request.content.decode()))
+            captured_headers.append(request.headers.get("x-api-key", ""))
             return httpx.Response(202, json={"id": "PO-12345", "status": "submitted"})
 
         mock_client = httpx.AsyncClient(transport=MockTransport(handler), base_url="https://api.sandbox.prodigi.com/v4.0")
@@ -333,6 +336,66 @@ async def test_post_prints_accepts_json_payload(tmp_path) -> None:
         asset_url = submitted_payload["items"][0]["assets"][0]["assetUrl"]
         assert asset_url.startswith("https://assets.example.com/")
         assert str(photo_id) in asset_url
+        assert captured_headers and captured_headers[0] == "test-api-key"
+
+
+@pytest.mark.asyncio
+async def test_post_prints_json_error_includes_debug(tmp_path) -> None:
+    photo_path = tmp_path / "printable.jpg"
+    _create_image(photo_path, (180, 180, 180), datetime(2024, 1, 15, tzinfo=timezone.utc))
+
+    os.environ["PHOTO_ARCHIVIST_THUMBNAIL_DIR"] = str(tmp_path / "thumbs")
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        scan_id, results = await _complete_scan(client, tmp_path)
+        assert results, "Expected at least one shortlist result"
+        photo_id = results[0]["id"]
+
+        toggle_response = await client.post(
+            f"/api/scans/{scan_id}/photos/{photo_id}/selection",
+            data={"selected": "true"},
+        )
+        assert toggle_response.status_code == 200
+
+        async def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(401, json={"Outcome": "NotAuthenticated", "TraceParent": "trace-123"})
+
+        mock_client = httpx.AsyncClient(transport=MockTransport(handler), base_url="https://api.sandbox.prodigi.com/v4.0")
+        print_order_service._http_client = mock_client
+
+        try:
+            response = await client.post(
+                "/api/prints",
+                json={
+                    "scan_id": scan_id,
+                    "photo_ids": [photo_id],
+                    "recipient": {
+                        "name": "Ada Lovelace",
+                        "email": "ada@example.com",
+                        "address": {
+                            "line1": "1 Example Street",
+                            "city": "London",
+                            "state": "London",
+                            "postal_code": "N1",
+                            "country_code": "GB",
+                        },
+                    },
+                    "shipping_method": "STANDARD",
+                    "copies": 2,
+                    "asset_base_url": "https://assets.example.com",
+                    "api_key": "bad-api-key",
+                },
+            )
+        finally:
+            await mock_client.aclose()
+            print_order_service._http_client = None
+
+        assert response.status_code == 502
+        payload = response.json()
+        assert payload["status"] == "error"
+        assert payload["debug"]["response"]["status_code"] == 401
+        assert payload["debug"]["request"]["shippingMethod"] == "STANDARD"
+        assert payload["debug"]["response"]["json"]["Outcome"] == "NotAuthenticated"
 
 
 @pytest.mark.asyncio
@@ -355,9 +418,11 @@ async def test_post_prints_form_submission_returns_success_partial(tmp_path) -> 
             assert toggle_response.status_code == 200
 
         captured_payloads: list[dict[str, object]] = []
+        captured_headers: list[str] = []
 
         async def handler(request: httpx.Request) -> httpx.Response:
             captured_payloads.append(json.loads(request.content.decode()))
+            captured_headers.append(request.headers.get("x-api-key", ""))
             return httpx.Response(202, json={"id": "PO-22222", "status": "submitted"})
 
         mock_client = httpx.AsyncClient(transport=MockTransport(handler), base_url="https://api.sandbox.prodigi.com/v4.0")
@@ -377,7 +442,7 @@ async def test_post_prints_form_submission_returns_success_partial(tmp_path) -> 
                 ("shipping_method", "STANDARD"),
                 ("copies", "1"),
                 ("asset_base_url", "https://assets.example.com"),
-                ("api_key", "example-key"),
+                ("api_key", "  example-key  "),
             ]
             for result in results:
                 form_entries.append(("photo_ids", result["id"]))
@@ -398,6 +463,133 @@ async def test_post_prints_form_submission_returns_success_partial(tmp_path) -> 
         assert "Reference:" in html
         assert captured_payloads, "Expected Prodigi payload to be captured"
         assert captured_payloads[0]["items"][0]["copies"] == 1
+        assert captured_headers and captured_headers[0] == "example-key"
+
+
+@pytest.mark.asyncio
+async def test_post_prints_form_prodigi_error_returns_partial_with_ok_status(tmp_path) -> None:
+    bright_path = tmp_path / "bright.jpg"
+    _create_image(bright_path, (255, 255, 255), datetime(2024, 1, 10, tzinfo=timezone.utc))
+
+    os.environ["PHOTO_ARCHIVIST_THUMBNAIL_DIR"] = str(tmp_path / "thumbs")
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        scan_id, results = await _complete_scan(client, tmp_path)
+        assert results, "Expected shortlist results"
+        target_photo = results[0]
+        toggle_response = await client.post(
+            f"/api/scans/{scan_id}/photos/{target_photo['id']}/selection",
+            data={"selected": "true"},
+            headers={"HX-Request": "true"},
+        )
+        assert toggle_response.status_code == 200
+
+        async def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(502, json={"message": "Prodigi is unavailable"})
+
+        mock_client = httpx.AsyncClient(transport=MockTransport(handler), base_url="https://api.sandbox.prodigi.com/v4.0")
+        print_order_service._http_client = mock_client
+
+        try:
+            form_entries: list[tuple[str, str]] = [
+                ("scan_id", scan_id),
+                ("photo_ids", target_photo["id"]),
+                ("name", "Grace Hopper"),
+                ("email", "grace@example.com"),
+                ("line1", "2 Example Road"),
+                ("line2", ""),
+                ("city", "New York"),
+                ("state", "NY"),
+                ("postal_code", "10001"),
+                ("country_code", "US"),
+                ("shipping_method", "STANDARD"),
+                ("copies", "1"),
+                ("asset_base_url", "https://assets.example.com"),
+                ("api_key", "example-key"),
+            ]
+            encoded = urlencode(form_entries)
+            response = await client.post(
+                "/api/prints",
+                content=encoded,
+                headers={"HX-Request": "true", "Content-Type": "application/x-www-form-urlencoded"},
+            )
+        finally:
+            await mock_client.aclose()
+            print_order_service._http_client = None
+
+        assert response.status_code == 200
+        assert "Unable to submit print order" in response.text
+        assert "Prodigi is unavailable" in response.text
+        assert "Prodigi debug details" in response.text
+        assert '"status_code": 502' in response.text
+        assert '"shippingMethod": "STANDARD"' in response.text
+
+
+@pytest.mark.asyncio
+async def test_print_order_submission_falls_back_when_httpx_typeerror(monkeypatch, tmp_path) -> None:
+    bright_path = tmp_path / "bright.jpg"
+    _create_image(bright_path, (255, 255, 255), datetime(2024, 1, 10, tzinfo=timezone.utc))
+
+    os.environ["PHOTO_ARCHIVIST_THUMBNAIL_DIR"] = str(tmp_path / "thumbs")
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        scan_id, results = await _complete_scan(client, tmp_path)
+        assert results, "Expected shortlist results"
+        target_photo = results[0]
+        toggle_response = await client.post(
+            f"/api/scans/{scan_id}/photos/{target_photo['id']}/selection",
+            data={"selected": "true"},
+            headers={"HX-Request": "true"},
+        )
+        assert toggle_response.status_code == 200
+
+        class BrokenAsyncClient:
+            def __init__(self, *args, **kwargs):
+                raise TypeError("int() argument must be a string, a bytes-like object or a real number, not 'dict'")
+
+        async def fake_stdlib(self, *, payload, headers):
+            class DummyResponse:
+                def __init__(self) -> None:
+                    self.status_code = 202
+
+                def json(self) -> dict[str, object]:
+                    return {"id": "PO-FALLBACK", "status": "submitted"}
+
+                @property
+                def text(self) -> str:
+                    return json.dumps(self.json())
+
+            return DummyResponse()
+
+        monkeypatch.setattr(print_orders.httpx, "AsyncClient", BrokenAsyncClient)
+        monkeypatch.setattr(print_orders.PrintOrderService, "_post_with_stdlib", fake_stdlib, raising=False)
+
+        form_entries = [
+            ("scan_id", scan_id),
+            ("photo_ids", target_photo["id"]),
+            ("name", "Grace Hopper"),
+            ("email", "grace@example.com"),
+            ("line1", "2 Example Road"),
+            ("line2", ""),
+            ("city", "New York"),
+            ("state", "NY"),
+            ("postal_code", "10001"),
+            ("country_code", "US"),
+            ("shipping_method", "STANDARD"),
+            ("copies", "1"),
+            ("asset_base_url", "https://assets.example.com"),
+            ("api_key", "example-key"),
+        ]
+        encoded = urlencode(form_entries)
+        response = await client.post(
+            "/api/prints",
+            content=encoded,
+            headers={"HX-Request": "true", "Content-Type": "application/x-www-form-urlencoded"},
+        )
+
+        assert response.status_code == 202
+        assert "Order submitted successfully" in response.text
+        assert "PO-FALLBACK" in response.text
 
 @pytest.mark.asyncio
 async def test_print_controls_fragment_requires_scan_id(tmp_path) -> None:
@@ -426,3 +618,4 @@ async def test_print_controls_fragment_requires_scan_id(tmp_path) -> None:
         html = fragment_with_id.text
         assert 'name="asset_base_url"' in html
         assert "Submit print order" in html
+        assert "document.getElementById('print-controls')?.dataset?.scanId" in html

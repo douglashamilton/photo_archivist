@@ -166,6 +166,14 @@ class PrintOrderRequest(BaseModel):
         cleaned = value.strip()
         return cleaned or None
 
+    @field_validator("api_key", mode="before")
+    @classmethod
+    def _normalize_api_key(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        cleaned = value.strip()
+        return cleaned or None
+
 
 @dataclass(slots=True)
 class PrintOrderSubmission:
