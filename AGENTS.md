@@ -18,11 +18,13 @@ Each slice must finish with automated tests plus a manual verification note for 
 - `prompts/` - step-by-step playbooks. Start here.
 - `templates/` - PRD, TDD, and slice-plan templates.
 - `docs/` - live artefacts (`prd.md`, `tdd.md`, `build-log.md`, `slices/`).
+- `docs/apis/` - API documentation, static. 
 
 Review these folders and the relevant template before creating or updating an artefact.
 
 ## Development Practices
 - Work in small, reviewable increments tied to a slice plan.
+- Fold bug fixes into the latest slice so that each slice is a complete, **working**, feature. 
 - Keep scope tight; raise follow-up tasks for broader refactors.
 - Maintain or add automated tests that prove the change.
 - Run the relevant test suites before sharing work. If no suite exists, document the chosen manual verification in the build log.

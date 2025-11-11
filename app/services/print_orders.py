@@ -130,15 +130,15 @@ class PrintOrderService:
         for photo in photos:
             asset_url = _compose_asset_url(base, request.scan_id, photo)
             item = {
-                "sku": "GLOBAL-PRINT-4X6",
+                "sku": "GLOBAL-PAP-4X6",
                 "copies": request.copies,
-                "itemReference": str(photo.id),
+                "merchantReference": str(photo.id),
                 "attributes": {},
+                "sizing": "fillPrintArea",
                 "assets": [
                     {
-                        "assetType": "image",
-                        "assetUrl": asset_url,
-                        "assetReference": str(photo.id),
+                        "printArea": "default",
+                        "url": asset_url,
                     }
                 ],
             }
@@ -146,15 +146,15 @@ class PrintOrderService:
 
         recipient = request.recipient
         payload: dict[str, object] = {
-            "shippingMethod": request.shipping_method,
+            "shippingMethod": _prodigi_shipping_method(request.shipping_method),
             "recipient": {
                 "name": recipient.name,
                 "email": recipient.email,
                 "address": {
                     "line1": recipient.address.line1,
                     "line2": recipient.address.line2,
-                    "city": recipient.address.city,
-                    "state": recipient.address.state,
+                    "townOrCity": recipient.address.city,
+                    "stateOrCounty": recipient.address.state,
                     "postalOrZipCode": recipient.address.postal_code,
                     "countryCode": recipient.address.country_code,
                 },
@@ -341,3 +341,16 @@ class PrintOrderService:
 def _compose_asset_url(base_url: str, scan_id: UUID, photo: PhotoResult) -> str:
     filename = quote(photo.path.name)
     return f"{base_url}/{scan_id}/{photo.id}/{filename}"
+
+
+def _prodigi_shipping_method(method: str) -> str:
+    mapping = {
+        "BUDGET": "Budget",
+        "STANDARD": "Standard",
+        "STANDARDPLUS": "StandardPlus",
+        "STANDARD_PLUS": "StandardPlus",
+        "EXPRESS": "Express",
+        "OVERNIGHT": "Overnight",
+    }
+    normalized = method.strip().upper()
+    return mapping.get(normalized, method)

@@ -332,8 +332,8 @@ async def test_post_prints_accepts_json_payload(tmp_path) -> None:
         assert body["orderId"] == "PO-12345"
         assert captured_payloads, "Prodigi handler was not invoked"
         submitted_payload = captured_payloads[0]
-        assert submitted_payload["shippingMethod"] == "STANDARD"
-        asset_url = submitted_payload["items"][0]["assets"][0]["assetUrl"]
+        assert submitted_payload["shippingMethod"] == "Standard"
+        asset_url = submitted_payload["items"][0]["assets"][0]["url"]
         assert asset_url.startswith("https://assets.example.com/")
         assert str(photo_id) in asset_url
         assert captured_headers and captured_headers[0] == "test-api-key"
@@ -394,7 +394,7 @@ async def test_post_prints_json_error_includes_debug(tmp_path) -> None:
         payload = response.json()
         assert payload["status"] == "error"
         assert payload["debug"]["response"]["status_code"] == 401
-        assert payload["debug"]["request"]["shippingMethod"] == "STANDARD"
+        assert payload["debug"]["request"]["shippingMethod"] == "Standard"
         assert payload["debug"]["response"]["json"]["Outcome"] == "NotAuthenticated"
 
 
@@ -522,7 +522,7 @@ async def test_post_prints_form_prodigi_error_returns_partial_with_ok_status(tmp
         assert "Prodigi is unavailable" in response.text
         assert "Prodigi debug details" in response.text
         assert '"status_code": 502' in response.text
-        assert '"shippingMethod": "STANDARD"' in response.text
+        assert '"shippingMethod": "Standard"' in response.text
 
 
 @pytest.mark.asyncio
