@@ -15,39 +15,43 @@
 
 ### Comparable solutions / references
 
-* 3–5 relevant apps, patterns, or repos with 1-line takeaways.
+* 3–5 relevant apps, patterns, or repos with 1-line takeaways (researched by the agent).
 
 ### User Stories
 
-* Up to three user stories in 'given/when/then' format. 
+* Up to three user stories in "given/when/then" format.
 
 ### Must-Have Features (MVP)
 
-* Core functionality that must exist in version 1. 
+* Core functionality that must exist in version 1.
 
 ### Nice-to-Have Features
 
-* Optional enhancements that can wait. 
+* Optional enhancements that can wait.
 
 ### Non-functional Requirements
 
-* Outline non-functional requirements such as performance (e.g., load within 2 seconds), security (e.g., input validation, secrets handling), privacy (e.g., no sensitive data logged) or compatibility (e.g., Python 3.12, modern browsers).
+* Outline non-functional requirements such as performance (e.g., load within 2 seconds), security (e.g., input validation, secrets handling), privacy (e.g., no sensitive data logged) or compatibility (e.g., Python 3.12, modern browsers). Include environment or deployment notes when they are known.
 
 ### Data Considerations
 
 * Key data sources, quality notes, and any structural implications worth highlighting for later design.
 
+### Success Metrics
+
+* Business and user-facing KPIs or qualitative indicators that signal the release is working.
+
 ### Acceptance Criteria
 
-* Checklist of measurable outcomes (e.g.' "User can add and view a task within 3 clicks").
+* Checklist of measurable outcomes (e.g., "User can add and view a task within 3 clicks").
 
 ### Risks & Mitigations
 
-* Top 5 risks with a mitigation/fallback each. 
+* Top 5 risks with a mitigation/fallback each.
 
 ### Out-of-Scope
 
-* Explicitly excluded features or platforms. 
+* Explicitly excluded features or platforms.
 
 ### Assumptions
 
@@ -55,7 +59,7 @@
 
 ### Open questions (answer before planning)
 
-* Numbered list. Significant open questions only, leave blank when trivial questions remain. 
+* Numbered list. Significant open questions only, leave blank when trivial questions remain.
 
 ### Sources
 

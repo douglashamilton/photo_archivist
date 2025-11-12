@@ -14,13 +14,19 @@
 Ask the user to provide the following information:
 * **Project name:** {{Name}}
 * **One-sentence objective:** {{Objective}}
-* **Primary users & JTBD:** {{Users / key jobs}}
-* **Core problem / use cases:** {{Problem / use cases}}
-* **Constraints (must/should):** {{Platforms, data residency, security, budget/time}}
-* **Known assets:** {{Existing data/APIs, repos, design, brand, domains}}
-* **Environments:** {{Web/mobile/desktop/CLI; OS; cloud}}
-* **Non-goals / out of scope:** {{Non-goals}}
-* **Success criteria (business & user):** {{KPIs, UX outcomes}}
+* **Target users & top jobs:** {{Primary personas, top 2–3 jobs-to-be-done}}
+* **Core problem / use cases:** {{Pain points, primary scenarios}}
+* **Top user journeys:** {{2–3 "When…, they need to…, so that…" examples}}
+* **Must-have capabilities (MVP):** {{Critical outcomes or features}}
+* **Nice-to-have ideas:** {{Deferred or experimental ideas}}
+* **Constraints & guardrails:** {{Regulatory, performance, platform, timeline, budget}}
+* **Data inputs & quality notes:** {{Available data sets, gaps, privacy considerations}}
+* **Known assets & dependencies:** {{Existing APIs, repos, design systems, stakeholders}}
+* **Known risks or blockers:** {{Issues we should watch for}}
+* **Assumptions already in play:** {{What must be true for success}}
+* **Non-goals / out of scope:** {{Explicit exclusions}}
+* **Success metrics (business & user):** {{KPIs, UX outcomes}}
+* **Open questions for research/design:** {{Outstanding questions they need answered}}
 * **Depth:** {{brief | standard | deep}} (default: standard)
 
 ## Step 2
