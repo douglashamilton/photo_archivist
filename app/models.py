@@ -141,7 +141,6 @@ class PrintOrderRequest(BaseModel):
     shipping_method: str = Field(default="STANDARD")
     copies: int = Field(default=1, ge=1, le=10)
     asset_base_url: str | None = Field(default=None, description="HTTPS base URL for published assets")
-    api_key: str | None = Field(default=None, description="Prodigi API key")
 
     @field_validator("photo_ids")
     @classmethod
@@ -161,14 +160,6 @@ class PrintOrderRequest(BaseModel):
     @field_validator("asset_base_url", mode="before")
     @classmethod
     def _normalize_asset_base(cls, value: str | None) -> str | None:
-        if value is None:
-            return None
-        cleaned = value.strip()
-        return cleaned or None
-
-    @field_validator("api_key", mode="before")
-    @classmethod
-    def _normalize_api_key(cls, value: str | None) -> str | None:
         if value is None:
             return None
         cleaned = value.strip()

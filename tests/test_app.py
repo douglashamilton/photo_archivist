@@ -56,6 +56,11 @@ async def _complete_scan(client: AsyncClient, directory: os.PathLike[str] | str)
     raise AssertionError("Scan did not complete in time")
 
 
+@pytest.fixture(autouse=True)
+def _configure_prodigi_api_key(monkeypatch) -> None:
+    monkeypatch.setenv("PHOTO_ARCHIVIST_PRODIGI_API_KEY", "test-env-api-key")
+
+
 @pytest.mark.asyncio
 async def test_get_root_renders_form() -> None:
     transport = ASGITransport(app=app)
@@ -320,7 +325,6 @@ async def test_post_prints_accepts_json_payload(tmp_path) -> None:
                     "shipping_method": "STANDARD",
                     "copies": 2,
                     "asset_base_url": "https://assets.example.com",
-                    "api_key": "test-api-key",
                 },
             )
         finally:
@@ -336,7 +340,7 @@ async def test_post_prints_accepts_json_payload(tmp_path) -> None:
         asset_url = submitted_payload["items"][0]["assets"][0]["url"]
         assert asset_url.startswith("https://assets.example.com/")
         assert str(photo_id) in asset_url
-        assert captured_headers and captured_headers[0] == "test-api-key"
+        assert captured_headers and captured_headers[0] == "test-env-api-key"
 
 
 @pytest.mark.asyncio
@@ -383,7 +387,6 @@ async def test_post_prints_json_error_includes_debug(tmp_path) -> None:
                     "shipping_method": "STANDARD",
                     "copies": 2,
                     "asset_base_url": "https://assets.example.com",
-                    "api_key": "bad-api-key",
                 },
             )
         finally:
@@ -399,7 +402,48 @@ async def test_post_prints_json_error_includes_debug(tmp_path) -> None:
 
 
 @pytest.mark.asyncio
-async def test_post_prints_form_submission_returns_success_partial(tmp_path) -> None:
+async def test_post_prints_requires_backend_api_key(monkeypatch, tmp_path) -> None:
+    photo_path = tmp_path / "printable.jpg"
+    _create_image(photo_path, (200, 200, 200), datetime(2024, 1, 15, tzinfo=timezone.utc))
+
+    os.environ["PHOTO_ARCHIVIST_THUMBNAIL_DIR"] = str(tmp_path / "thumbs")
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        scan_id, results = await _complete_scan(client, tmp_path)
+        assert results, "Expected shortlist results"
+        target_photo = results[0]["id"]
+
+        monkeypatch.delenv("PHOTO_ARCHIVIST_PRODIGI_API_KEY", raising=False)
+
+        response = await client.post(
+            "/api/prints",
+            json={
+                "scan_id": scan_id,
+                "photo_ids": [target_photo],
+                "recipient": {
+                    "name": "Ada Lovelace",
+                    "email": "ada@example.com",
+                    "address": {
+                        "line1": "1 Example Street",
+                        "city": "London",
+                        "state": "London",
+                        "postal_code": "N1",
+                        "country_code": "GB",
+                    },
+                },
+                "shipping_method": "STANDARD",
+                "copies": 1,
+                "asset_base_url": "https://assets.example.com",
+            },
+        )
+
+    assert response.status_code == 400
+    payload = response.json()
+    assert any("Prodigi API key is required" in message for message in payload.get("errors", []))
+
+
+@pytest.mark.asyncio
+async def test_post_prints_form_submission_returns_success_partial(monkeypatch, tmp_path) -> None:
     bright_path = tmp_path / "bright.jpg"
     darker_path = tmp_path / "dark.jpg"
     _create_image(bright_path, (255, 255, 255), datetime(2024, 1, 10, tzinfo=timezone.utc))
@@ -429,6 +473,7 @@ async def test_post_prints_form_submission_returns_success_partial(tmp_path) -> 
         print_order_service._http_client = mock_client
 
         try:
+            monkeypatch.setenv("PHOTO_ARCHIVIST_PRODIGI_API_KEY", "  example-key  ")
             form_entries: list[tuple[str, str]] = [
                 ("scan_id", scan_id),
                 ("name", "Grace Hopper"),
@@ -442,7 +487,6 @@ async def test_post_prints_form_submission_returns_success_partial(tmp_path) -> 
                 ("shipping_method", "STANDARD"),
                 ("copies", "1"),
                 ("asset_base_url", "https://assets.example.com"),
-                ("api_key", "  example-key  "),
             ]
             for result in results:
                 form_entries.append(("photo_ids", result["id"]))
@@ -467,7 +511,7 @@ async def test_post_prints_form_submission_returns_success_partial(tmp_path) -> 
 
 
 @pytest.mark.asyncio
-async def test_post_prints_form_prodigi_error_returns_partial_with_ok_status(tmp_path) -> None:
+async def test_post_prints_form_prodigi_error_returns_partial_with_ok_status(monkeypatch, tmp_path) -> None:
     bright_path = tmp_path / "bright.jpg"
     _create_image(bright_path, (255, 255, 255), datetime(2024, 1, 10, tzinfo=timezone.utc))
 
@@ -491,6 +535,7 @@ async def test_post_prints_form_prodigi_error_returns_partial_with_ok_status(tmp
         print_order_service._http_client = mock_client
 
         try:
+            monkeypatch.setenv("PHOTO_ARCHIVIST_PRODIGI_API_KEY", "  example-key  ")
             form_entries: list[tuple[str, str]] = [
                 ("scan_id", scan_id),
                 ("photo_ids", target_photo["id"]),
@@ -505,7 +550,6 @@ async def test_post_prints_form_prodigi_error_returns_partial_with_ok_status(tmp
                 ("shipping_method", "STANDARD"),
                 ("copies", "1"),
                 ("asset_base_url", "https://assets.example.com"),
-                ("api_key", "example-key"),
             ]
             encoded = urlencode(form_entries)
             response = await client.post(
@@ -578,7 +622,6 @@ async def test_print_order_submission_falls_back_when_httpx_typeerror(monkeypatc
             ("shipping_method", "STANDARD"),
             ("copies", "1"),
             ("asset_base_url", "https://assets.example.com"),
-            ("api_key", "example-key"),
         ]
         encoded = urlencode(form_entries)
         response = await client.post(

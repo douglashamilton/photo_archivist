@@ -144,10 +144,9 @@
             />
             <small>Provide an HTTPS prefix where Prodigi can fetch the original photos.</small>
           </label>
-          <label>
-            <span>Prodigi API key</span>
-            <input type="password" name="api_key" autocomplete="off" required />
-          </label>
+          <p class="form-hint">
+            Prodigi API access is configured on the server via <code>PHOTO_ARCHIVIST_PRODIGI_API_KEY</code>.
+          </p>
         </fieldset>
 
         <button type="submit" class="primary">Submit print order ({{ selected_count }} photos)</button>

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
@@ -23,10 +24,21 @@ def _thumbnail_root() -> Path:
 
 
 def _scan_directory(scan_id: UUID) -> Path:
-    root = _thumbnail_root()
-    path = root / str(scan_id)
+    path = thumbnail_directory(scan_id)
     path.mkdir(parents=True, exist_ok=True)
     return path
+
+
+def thumbnail_directory(scan_id: UUID) -> Path:
+    """Return the directory where thumbnails for the scan are stored (may not exist)."""
+    return _thumbnail_root() / str(scan_id)
+
+
+def remove_thumbnails_for_scan(scan_id: UUID) -> None:
+    """Delete cached thumbnails for the given scan."""
+    target_dir = thumbnail_directory(scan_id)
+    if target_dir.exists():
+        shutil.rmtree(target_dir, ignore_errors=True)
 
 
 def ensure_thumbnails_for_results(scan_id: UUID, results: Iterable[PhotoResult]) -> None:
@@ -57,4 +69,3 @@ def _generate_thumbnail(photo: PhotoResult, destination: Path) -> None:
         processed = processed.convert("RGB")
         processed.thumbnail(THUMBNAIL_SIZE, Image.Resampling.LANCZOS)
         processed.save(destination, format="JPEG", optimize=True, quality=85)
-

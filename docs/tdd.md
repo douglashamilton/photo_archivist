@@ -9,7 +9,7 @@ Photo Archivist MVP ships as a local FastAPI (Python 3.12) web app using Jinja +
 * **Stack:** Python 3.12, FastAPI 0.115, Uvicorn for dev server, Jinja2 templates with HTMX for partial updates, Pydantic models, Pillow 11 for image I/O, httpx for outbound Prodigi calls, pytest + httpx for tests, Ruff (lint + format), and pre-commit to wire everything together.
 * **App structure:** Server-rendered views served by FastAPI; HTMX drives form submissions and result refreshes, while domain logic lives in a `services` module (scan orchestration, metadata extraction, scoring, print ordering). Application state (scan jobs) is kept in an in-memory registry owned by a `ScanManager`.
 * **Data storage:** No persistent store; scan results are cached per job in memory until replaced. Thumbnail binaries are generated on demand and memoized in a temp directory for the session (cleaned on shutdown). Print order payloads and their Prodigi responses are tracked in memory long enough to surface confirmation.
-* **Auth:** None; app runs locally and trusts the invoking user. Prodigi credentials (API key) are provided by the user and held in process memory for the session.
+* **Auth:** None; app runs locally and trusts the invoking user. Prodigi credentials (API key) are injected via environment variable (`PHOTO_ARCHIVIST_PRODIGI_API_KEY`) and never echoed back into the UI.
 * **Deployment & environments:** Local dev via `uvicorn app.main:app --reload`; CI runs pytest and Ruff. Distribution via `pip install -e .` or packaged executable (future slice). Requires outbound HTTPS access to the Prodigi sandbox (`https://api.prodigi.com/v4.0/`).
 
 ### Tech Stack Decisions
@@ -45,7 +45,7 @@ Photo Archivist MVP ships as a local FastAPI (Python 3.12) web app using Jinja +
 * **PrintAsset:** `{ id: UUID, photo_id: UUID, source_path: Path, public_url: HttpUrl, uploaded_at: datetime, expires_at: datetime }`.
 * **PrintOrderRequest:** `{ scan_id: UUID, photo_ids: List[UUID], recipient: Recipient, shipping_method: str, copies: int }`.
 * **PrintOrderStatus:** `{ id: str, state: Enum[submitted,failed,complete], submitted_at: datetime, updated_at: datetime, prodigi_reference: str, failure_reason: str|None }`.
-* **ScanManager:** orchestrates job lifecycle, holds an in-memory `Dict[UUID, ScanStatus]` and `Dict[UUID, List[PhotoResult]]`, exposes thread-safe read/write, purges stale jobs after timeout.
+* **ScanManager:** orchestrates job lifecycle, holds an in-memory `Dict[UUID, ScanStatus]` and `Dict[UUID, List[PhotoResult]]`, exposes thread-safe read/write, limits retained completed jobs (default 5) so history doesn’t grow unbounded, and exposes a shutdown hook that drains executors plus thumbnail caches.
 * **PrintOrderService:** coordinates asset publication, builds Prodigi payloads, handles HTTP requests, caches order status, and exposes polling helpers.
 
 ### Data flow & interfaces
@@ -94,7 +94,7 @@ Response (202): { "orderId": "PO-123456", "status": "submitted" }
 
 ### Tooling & workflows
 
-* **Testing:** Unit tests for metadata extraction (EXIF vs fallback), brightness scoring, shortlist selection, and Prodigi payload construction (mocking httpx); service-level tests for ScanManager concurrency and PrintOrderService retries; API tests using httpx AsyncClient to assert scan flows plus print submissions/polling. Target >=85% coverage on pipeline modules.
+* **Testing:** Unit tests for metadata extraction (EXIF vs fallback), brightness scoring, shortlist selection, and Prodigi payload construction (mocking httpx); service-level tests for ScanManager concurrency and PrintOrderService retries; API tests using httpx AsyncClient to assert scan flows plus print submissions/polling. Target >=85% coverage on pipeline modules, and always install dev dependencies via `pip install -e .[dev]` so `pytest-asyncio` is present (pytest will otherwise refuse to run async tests).
 * **Quality:** Ruff (rules + formatter) enforced via `ruff check .` and `ruff format .`; mypy optional but planned as follow-up once domain stabilizes. CI pipeline runs Ruff, pytest (with coverage), and builds the project.
 * **Collaboration:** Feature slices branch off `main` using `feature/<slice-name>`; PRs reference relevant slice plan and document verification in `docs/build-log.md`. Docs (`prd.md`, `tdd.md`, slice plans) updated alongside code.
 
@@ -115,7 +115,7 @@ Response (202): { "orderId": "PO-123456", "status": "submitted" }
 * Users run the app from an account with read access to the chosen directory.
 * Brightness scoring using mean luminance is an acceptable proxy for MVP despite subjective quality differences.
 * Shortlist state is transient; users accept rescanning when the app restarts.
-* Users will configure a Prodigi API key (sandbox for dev) and payment method outside the app before ordering prints.
+* Users will configure a Prodigi API key (sandbox for dev) via `PHOTO_ARCHIVIST_PRODIGI_API_KEY` (or a secrets manager) and payment method outside the app before ordering prints.
 * The app can publish temporary HTTPS asset URLs for selected photos without manual intervention (e.g., via configurable storage).
 
 ### Open questions

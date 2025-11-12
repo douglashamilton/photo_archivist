@@ -10,7 +10,7 @@ from uuid import UUID, uuid4
 
 from app.models import PhotoResult, ScanOutcome, ScanRequest, ScanState, ScanStatus
 from app.services.scanner import run_scan
-from app.services.thumbnails import ensure_thumbnails_for_results
+from app.services.thumbnails import ensure_thumbnails_for_results, remove_thumbnails_for_scan
 
 logger = logging.getLogger(__name__)
 
@@ -18,11 +18,13 @@ logger = logging.getLogger(__name__)
 class ScanManager:
     """Manage scan job lifecycle and background execution."""
 
-    def __init__(self, max_workers: int = 4) -> None:
+    def __init__(self, max_workers: int = 4, history_limit: int = 5) -> None:
         self._executor = ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="photo-archivist")
         self._lock = Lock()
         self._statuses: dict[UUID, ScanStatus] = {}
         self._outcomes: dict[UUID, ScanOutcome] = {}
+        self._history_limit = max(0, history_limit)
+        self._shutdown = False
 
     def enqueue(self, request: ScanRequest) -> UUID:
         scan_id = uuid4()
@@ -98,6 +100,7 @@ class ScanManager:
             total=outcome.total_files,
             matched=outcome.matched_files,
         )
+        self._prune_completed_history()
 
     def _update_status(self, scan_id: UUID, **updates) -> None:
         with self._lock:
@@ -135,3 +138,42 @@ class ScanManager:
                 ),
                 True,
             )
+
+    def shutdown(self) -> None:
+        """Stop background workers and release cached scan data."""
+        if not self._shutdown:
+            self._executor.shutdown(wait=True, cancel_futures=False)
+            self._shutdown = True
+        removed_ids = self._drain_all_scans()
+        for scan_id in removed_ids:
+            remove_thumbnails_for_scan(scan_id)
+
+    def _prune_completed_history(self) -> None:
+        if self._history_limit <= 0:
+            return
+
+        with self._lock:
+            completed_items = [
+                (scan_id, status)
+                for scan_id, status in self._statuses.items()
+                if status.state in (ScanState.COMPLETE, ScanState.ERROR)
+            ]
+            if len(completed_items) <= self._history_limit:
+                return
+
+            completed_items.sort(key=lambda item: item[1].updated_at, reverse=True)
+            to_remove = [scan_id for scan_id, _ in completed_items[self._history_limit :]]
+
+            for scan_id in to_remove:
+                self._statuses.pop(scan_id, None)
+                self._outcomes.pop(scan_id, None)
+
+        for scan_id in to_remove:
+            remove_thumbnails_for_scan(scan_id)
+
+    def _drain_all_scans(self) -> list[UUID]:
+        with self._lock:
+            outcome_ids = list(self._outcomes.keys())
+            self._statuses.clear()
+            self._outcomes.clear()
+        return outcome_ids

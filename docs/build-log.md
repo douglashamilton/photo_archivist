@@ -70,3 +70,11 @@ Summarise each completed slice here. Include:
 - Added API/HTML coverage to assert the debug contract plus the existing Prodigi error path, and ran `.venv\Scripts\python.exe -m pytest` (`tests/test_app.py`).
 - Manual check: Trigger a failing print submission (e.g., send an invalid API key), expand the “Prodigi debug details” panel, and confirm the request/response JSON matches expectations.
 
+## 2025-11-09 - Slice 8
+- Scope: docs/slices/slice-8.md completes the secure credential + cleanup work requested by the stakeholder.
+- Removed the Prodigi API key input entirely; the print form now trusts the server’s `PHOTO_ARCHIVIST_PRODIGI_API_KEY`, `PrintOrderRequest` no longer accepts a key, and `PrintOrderService` trims/validates the env var with new regression coverage so missing config surfaces as a 400 (`app/models.py`, `app/services/print_orders.py`, `app/main.py`, `app/templates/partials/print_controls.html`, `tests/test_app.py`).
+- Documented the need to install the `[dev]` extra (to bring in `pytest-asyncio`) in `docs/tdd.md` so fresh environments don’t see “async def functions are not natively supported” warnings when running pytest.
+- Hardened background cleanup: `ScanManager` now limits completed history, removes thumbnail folders as it prunes, and exposes a shutdown hook that the FastAPI app calls to close the executor and delete cached assets; added targeted tests to prove pruning/shutdown behavior (`app/services/scan_manager.py`, `app/services/thumbnails.py`, `app/main.py`, `tests/test_scan_manager.py`).
+- Automated: `pytest`.
+- Manual check: Set `PHOTO_ARCHIVIST_PRODIGI_API_KEY`, run `uvicorn app.main:app --reload`, submit a print order without supplying an API key in the UI, observe the success banner, then stop the server and verify the temporary thumbnail folders under your temp directory disappear.
+

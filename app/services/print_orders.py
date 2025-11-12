@@ -69,12 +69,14 @@ class PrintOrderService:
         *,
         http_client: httpx.AsyncClient | None = None,
         base_url: str | None = None,
+        default_asset_base: str | None = None,
+        default_api_key: str | None = None,
     ) -> None:
         self._scan_manager = scan_manager
         self._http_client = http_client
         self._base_url = base_url or os.getenv("PHOTO_ARCHIVIST_PRODIGI_BASE_URL", "https://api.sandbox.prodigi.com/v4.0")
-        self._default_asset_base = os.getenv("PHOTO_ARCHIVIST_ASSET_BASE_URL")
-        self._default_api_key = os.getenv("PHOTO_ARCHIVIST_PRODIGI_API_KEY")
+        self._default_asset_base = default_asset_base or os.getenv("PHOTO_ARCHIVIST_ASSET_BASE_URL")
+        self._default_api_key = default_api_key or os.getenv("PHOTO_ARCHIVIST_PRODIGI_API_KEY")
         self._timeout = 30.0
 
     async def submit_print_order(self, request: PrintOrderRequest) -> PrintOrderSubmission:
@@ -95,18 +97,17 @@ class PrintOrderService:
         if not selected_photos:
             raise NoSelectedPhotosError("Select at least one photo to print.")
 
-        asset_base_url = request.asset_base_url or self._default_asset_base
+        asset_base_url = self._resolve_asset_base_url(request.asset_base_url)
         if not asset_base_url:
             raise PrintOrderConfigurationError(
                 "Asset base URL is required. Set PHOTO_ARCHIVIST_ASSET_BASE_URL "
                 "or supply one in the request."
             )
 
-        api_key = request.api_key or self._default_api_key
+        api_key = self._resolve_api_key()
         if not api_key:
             raise PrintOrderConfigurationError(
-                "Prodigi API key is required. Set PHOTO_ARCHIVIST_PRODIGI_API_KEY "
-                "or include one in the request."
+                "Prodigi API key is required. Set PHOTO_ARCHIVIST_PRODIGI_API_KEY in the server environment."
             )
 
         payload = self._build_payload(
@@ -117,6 +118,26 @@ class PrintOrderService:
 
         submission = await self._send_to_prodigi(payload=payload, api_key=api_key)
         return submission
+
+    def _resolve_asset_base_url(self, explicit: str | None) -> str | None:
+        if explicit:
+            cleaned = explicit.strip()
+            if cleaned:
+                return cleaned
+        env_value = os.getenv("PHOTO_ARCHIVIST_ASSET_BASE_URL")
+        candidate = env_value or self._default_asset_base
+        if not candidate:
+            return None
+        cleaned = candidate.strip()
+        return cleaned or None
+
+    def _resolve_api_key(self) -> str | None:
+        env_value = os.getenv("PHOTO_ARCHIVIST_PRODIGI_API_KEY")
+        candidate = env_value or self._default_api_key
+        if not candidate:
+            return None
+        cleaned = candidate.strip()
+        return cleaned or None
 
     def _build_payload(
         self,

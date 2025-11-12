@@ -31,6 +31,12 @@ print_order_service = PrintOrderService(scan_manager)
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 
 
+@app.on_event("shutdown")
+async def shutdown_background_resources() -> None:
+    """Ensure executors and temporary assets are released when the app stops."""
+    scan_manager.shutdown()
+
+
 def _default_print_form_values() -> Dict[str, str]:
     return {
         "name": "",
@@ -380,7 +386,6 @@ async def submit_print_order(request: Request) -> Response:
         "shipping_method": form.get("shipping_method", "STANDARD"),
         "copies": form.get("copies", "1"),
         "asset_base_url": form.get("asset_base_url") or None,
-        "api_key": form.get("api_key") or None,
     }
 
     order_request: Optional[PrintOrderRequest] = None
