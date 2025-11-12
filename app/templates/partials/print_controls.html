@@ -1,0 +1,156 @@
+{% set has_scan = scan_id is not none %}
+<section
+  id="print-controls"
+  aria-live="polite"
+  {% if scan_id %}data-scan-id="{{ scan_id }}"{% endif %}
+  hx-target="this"
+  hx-swap="outerHTML"
+  hx-trigger="print-refresh from:body"
+  hx-get="/fragments/print"
+  hx-vals="js:{scan_id: (event.detail && event.detail.scan_id) || (document.getElementById('print-controls')?.dataset?.scanId) || null}"
+>
+  <div class="print-controls-fragment">
+    <header>
+      <h2>Print selected photos</h2>
+    </header>
+
+    {% if print_feedback and print_feedback.status == "success" %}
+      <article class="success" role="status">
+        <p>
+          Order submitted successfully.
+          {% if print_feedback.order_id %}Reference: <strong>{{ print_feedback.order_id }}</strong>.{% endif %}
+        </p>
+      </article>
+    {% elif print_feedback and print_feedback.status == "error" %}
+      <article class="error" role="alert">
+        <h3>Unable to submit print order</h3>
+        <ul>
+          {% for message in print_feedback.errors %}
+            <li>{{ message }}</li>
+          {% endfor %}
+        </ul>
+        {% if print_feedback.debug %}
+          <details class="prodigi-debug">
+            <summary>Prodigi debug details</summary>
+            <div>
+              <h4>Request payload</h4>
+              <pre>{{ print_feedback.debug.request | tojson(indent=2) }}</pre>
+            </div>
+            <div>
+              <h4>Response</h4>
+              <pre>{{ print_feedback.debug.response | tojson(indent=2) }}</pre>
+            </div>
+          </details>
+        {% endif %}
+      </article>
+    {% endif %}
+
+    {% if not has_scan %}
+      <p>Run a scan before sending selected photos to print.</p>
+    {% elif selected_count == 0 %}
+      <p>Select at least one shortlisted photo to enable printing.</p>
+    {% else %}
+      <form
+        id="print-order-form"
+        action="/api/prints"
+        method="post"
+        hx-post="/api/prints"
+        hx-target="#print-controls"
+        hx-swap="outerHTML"
+      >
+        <input type="hidden" name="scan_id" value="{{ scan_id }}" />
+        {% for photo in results if photo.selected %}
+          <input type="hidden" name="photo_ids" value="{{ photo.id }}" />
+        {% endfor %}
+
+        <fieldset>
+          <legend>Recipient</legend>
+          <label>
+            <span>Name</span>
+            <input type="text" name="name" value="{{ print_form_values.name }}" required />
+          </label>
+          <label>
+            <span>Email</span>
+            <input type="email" name="email" value="{{ print_form_values.email }}" required />
+          </label>
+          <label>
+            <span>Address line 1</span>
+            <input type="text" name="line1" value="{{ print_form_values.line1 }}" required />
+          </label>
+          <label>
+            <span>Address line 2</span>
+            <input type="text" name="line2" value="{{ print_form_values.line2 }}" />
+          </label>
+          <label>
+            <span>City</span>
+            <input type="text" name="city" value="{{ print_form_values.city }}" required />
+          </label>
+          <label>
+            <span>State / region</span>
+            <input type="text" name="state" value="{{ print_form_values.state }}" />
+          </label>
+          <label>
+            <span>Postal code</span>
+            <input type="text" name="postal_code" value="{{ print_form_values.postal_code }}" required />
+          </label>
+          <label>
+            <span>Country (ISO code)</span>
+            <input
+              type="text"
+              name="country_code"
+              value="{{ print_form_values.country_code }}"
+              maxlength="2"
+              required
+            />
+          </label>
+        </fieldset>
+
+        <fieldset>
+          <legend>Order details</legend>
+          <label>
+            <span>Shipping method</span>
+            <select name="shipping_method">
+              <option value="STANDARD" {% if print_form_values.shipping_method == "STANDARD" %}selected{% endif %}>
+                Standard
+              </option>
+              <option value="EXPRESS" {% if print_form_values.shipping_method == "EXPRESS" %}selected{% endif %}>
+                Express
+              </option>
+            </select>
+          </label>
+          <label>
+            <span>Copies per photo</span>
+            <input
+              type="number"
+              name="copies"
+              min="1"
+              max="10"
+              value="{{ print_form_values.copies }}"
+              required
+            />
+          </label>
+        </fieldset>
+
+        <fieldset>
+          <legend>Integration</legend>
+          <label>
+            <span>Asset base URL</span>
+            <input
+              type="url"
+              name="asset_base_url"
+              value="{{ print_form_values.asset_base_url }}"
+              placeholder="https://example.com/photo-uploads"
+              required
+            />
+            <small>Provide an HTTPS prefix where Prodigi can fetch the original photos.</small>
+          </label>
+          <p class="form-hint">
+            Prodigi API access is configured on the server via <code>PHOTO_ARCHIVIST_PRODIGI_API_KEY</code>.
+          </p>
+        </fieldset>
+
+        <button type="submit" class="primary">Submit print order ({{ selected_count }} photos)</button>
+      </form>
+    {% endif %}
+  </div>
+</section>

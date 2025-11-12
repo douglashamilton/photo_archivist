@@ -1,0 +1,101 @@
+{% set is_polling = scan_state in ["queued", "running"] %}
+<section
+  id="shortlist"
+  aria-live="polite"
+  data-scan-state="{{ scan_state }}"
+  {% if scan_id %}data-scan-id="{{ scan_id }}"{% endif %}
+  {% if is_polling and scan_id %}
+    hx-get="/fragments/shortlist/{{ scan_id }}"
+    hx-trigger="load, every 1s"
+    hx-target="#shortlist"
+    hx-swap="outerHTML"
+  {% endif %}
+>
+  {% if errors %}
+    <div class="error" role="alert">
+      <h2>Scan request issue</h2>
+      <ul>
+        {% for error in errors %}
+          <li>{{ error }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% elif is_polling %}
+    <header>
+      <h2>Scan in progress</h2>
+      <p>
+        Processed
+        {{ progress.processed }}
+        of
+        {{ progress.total }}
+        JPEG files ({{ progress.matched }} matched so far).
+      </p>
+    </header>
+    <progress value="{{ progress.processed }}" max="{{ progress.total if progress.total else 1 }}">
+      {{ progress.processed }} / {{ progress.total }}
+    </progress>
+  {% elif scan_state == "error" %}
+    <div class="error" role="alert">
+      <h2>Scan failed</h2>
+      <p>{{ status_message or "An unexpected error occurred while scanning." }}</p>
+    </div>
+  {% elif results %}
+    <header>
+      <h2>Top {{ results|length }} photos</h2>
+      <p>Matched {{ summary.matched }} of {{ summary.total }} JPEG files.</p>
+    </header>
+    <ol>
+      {% for photo in results %}
+        <li>
+          <article class="result{% if photo.selected %} selected{% endif %}">
+            {% if scan_id and photo.thumbnail_path %}
+              <img
+                src="/api/thumbnails/{{ scan_id }}/{{ photo.id }}"
+                alt="Thumbnail preview of {{ photo.filename }}"
+                loading="lazy"
+                width="192"
+                height="192"
+              />
+            {% elif scan_id %}
+              <p class="thumbnail-fallback">Thumbnail unavailable.</p>
+            {% endif %}
+            <header>
+              <h3>{{ photo.filename }}</h3>
+            </header>
+            <p>
+              Captured
+              {{ photo.captured_at.strftime("%Y-%m-%d %H:%M:%S") }}
+              {% if photo.used_fallback %}(file modified time fallback){% endif %}
+            </p>
+            <p>Brightness score: {{ "%.1f"|format(photo.brightness) }}</p>
+            <div class="controls">
+              {% if photo.selected %}
+                <span class="selection-status">Selected</span>
+              {% endif %}
+              <form
+                action="/api/scans/{{ scan_id }}/photos/{{ photo.id }}/selection"
+                method="post"
+                hx-post="/api/scans/{{ scan_id }}/photos/{{ photo.id }}/selection"
+                hx-target="#shortlist"
+                hx-swap="outerHTML"
+              >
+                <input type="hidden" name="selected" value="{{ "false" if photo.selected else "true" }}" />
+                <button
+                  type="submit"
+                  class="{% if photo.selected %}secondary{% else %}primary{% endif %}"
+                  aria-pressed="{{ 'true' if photo.selected else 'false' }}"
+                >
+                  {% if photo.selected %}Deselect{% else %}Select{% endif %}
+                </button>
+              </form>
+            </div>
+          </article>
+        </li>
+      {% endfor %}
+    </ol>
+  {% elif scan_attempted %}
+    <p>No photos found within the selected date range.</p>
+  {% else %}
+    <p>No scan requested yet.</p>
+  {% endif %}
+</section>
