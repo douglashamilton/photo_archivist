@@ -1,85 +1,70 @@
 Published Time: Fri, 07 Nov 2025 15:21:00 GMT
 
-Introduction – Prodigi API Documentation
+# Prodigi Print API (v4)
 
-*   [Introduction](https://www.prodigi.com/print-api/docs/reference/#introduction)
-    
-    *   [Getting started](https://www.prodigi.com/print-api/docs/reference/#introduction-getting-started)
-*   [Environments](https://www.prodigi.com/print-api/docs/reference/#environments)
-    
-    *   [Sandbox](https://www.prodigi.com/print-api/docs/reference/#environments-sandbox)
-    *   [Live](https://www.prodigi.com/print-api/docs/reference/#environments-live)
-*   [Authentication](https://www.prodigi.com/print-api/docs/reference/#authentication)
-    
-*   [Orders](https://www.prodigi.com/print-api/docs/reference/#orders)
-    
-    *   [Order object](https://www.prodigi.com/print-api/docs/reference/#order-object)
-    *   [Create order](https://www.prodigi.com/print-api/docs/reference/#create-order)
-    *   [Get order by ID](https://www.prodigi.com/print-api/docs/reference/#get-order-by-id)
-    *   [Get orders](https://www.prodigi.com/print-api/docs/reference/#get-orders)
-*   [Order actions](https://www.prodigi.com/print-api/docs/reference/#order-actions)
-    
-    *   [Get actions](https://www.prodigi.com/print-api/docs/reference/#get-actions)
-    *   [Cancel an order](https://www.prodigi.com/print-api/docs/reference/#cancel-an-order)
-    *   [Pause an order](https://www.prodigi.com/print-api/docs/reference/#pause-an-order)
-    *   [Update shipping method](https://www.prodigi.com/print-api/docs/reference/#update-shipping-method)
-    *   [Update recipient](https://www.prodigi.com/print-api/docs/reference/#update-recipient)
-    *   [Update metadata](https://www.prodigi.com/print-api/docs/reference/#update-metadata)
-*   [Quotes](https://www.prodigi.com/print-api/docs/reference/#quotes)
-    
-    *   [Quote object](https://www.prodigi.com/print-api/docs/reference/#quote-object)
-    *   [Create Quote](https://www.prodigi.com/print-api/docs/reference/#create-quote)
-*   [Product details](https://www.prodigi.com/print-api/docs/reference/#product-details)
-    
-    *   [Product Details object](https://www.prodigi.com/print-api/docs/reference/#product-details-object)
-    *   [Get Product Details](https://www.prodigi.com/print-api/docs/reference/#get-product-details)
-    *   [Get photobook spine details](https://www.prodigi.com/print-api/docs/reference/#get-photobook-spine-details)
-*   [Callbacks](https://www.prodigi.com/print-api/docs/reference/#callbacks)
-    
-    *   [Properties](https://www.prodigi.com/print-api/docs/reference/#callbacks-properties)
-*   [ID format](https://www.prodigi.com/print-api/docs/reference/#id-format)
-    
-*   [Outcomes](https://www.prodigi.com/print-api/docs/reference/#outcomes)
-    
-    *   [General outcomes](https://www.prodigi.com/print-api/docs/reference/#outcomes-general-outcomes)
-*   [Status](https://www.prodigi.com/print-api/docs/reference/#status)
-    
-    *   [Status object](https://www.prodigi.com/print-api/docs/reference/#status-status-object)
-*   [Errors](https://www.prodigi.com/print-api/docs/reference/#errors)
-    
-    *   [Base error object](https://www.prodigi.com/print-api/docs/reference/#errors-base-error-object)
-    *   [TraceParent](https://www.prodigi.com/print-api/docs/reference/#errors-traceparent)
-    *   [Generic errors](https://www.prodigi.com/print-api/docs/reference/#errors-generic-errors)
-*   [The order process](https://www.prodigi.com/print-api/docs/reference/#the-order-process)
-    
-    *   [1\. Order creation](https://www.prodigi.com/print-api/docs/reference/#the-order-process-1-order-creation)
-    *   [2\. Assets download](https://www.prodigi.com/print-api/docs/reference/#the-order-process-2-assets-download)
-    *   [3\. Lab allocation](https://www.prodigi.com/print-api/docs/reference/#the-order-process-3-lab-allocation)
-    *   [4\. Asset preparation](https://www.prodigi.com/print-api/docs/reference/#the-order-process-4-asset-preparation)
-    *   [5\. Lab submission](https://www.prodigi.com/print-api/docs/reference/#the-order-process-5-lab-submission)
-    *   [6\. Production](https://www.prodigi.com/print-api/docs/reference/#the-order-process-6-production)
-    *   [7\. Shipping](https://www.prodigi.com/print-api/docs/reference/#the-order-process-7-shipping)
-    *   [8\. Order completion](https://www.prodigi.com/print-api/docs/reference/#the-order-process-8-order-completion)
-    *   [Image retention](https://www.prodigi.com/print-api/docs/reference/#the-order-process-image-retention)
-*   [Help & support](https://www.prodigi.com/print-api/docs/reference/#help-amp-support)
-    
-    *   [Contact](https://www.prodigi.com/print-api/docs/reference/#help-amp-support-contact)
-    *   [Guides](https://www.prodigi.com/print-api/docs/reference/#help-amp-support-guides)
-    *   [Versions](https://www.prodigi.com/print-api/docs/reference/#help-amp-support-versions)
-*   [Sign up for an API Key](https://dashboard.prodigi.com/register "Sign up for an API key")
-    
+## Table of contents
 
-# Welcome to the Prodigi API reference documentation for v4
+* [Overview](#overview)
+    * [Getting started](#getting-started)
+* [Environments](#environments)
+    * [Sandbox](#sandbox)
+    * [Live](#live)
+* [Authentication](#authentication)
+* [Orders](#orders)
+    * [Order object](#order-object)
+    * [Create order](#create-order)
+    * [Get order by ID](#get-order-by-id)
+    * [Get orders](#get-orders)
+* [Order actions](#order-actions)
+    * [Get actions](#get-actions)
+    * [Cancel an order](#cancel-an-order)
+    * [Pause an order](#pause-an-order)
+    * [Update shipping method](#update-shipping-method)
+    * [Update recipient](#update-recipient)
+    * [Update metadata](#update-metadata)
+* [Quotes](#quotes)
+    * [Quote object](#quote-object)
+    * [Create quote](#create-quote)
+* [Product details](#product-details)
+    * [Product details object](#product-details-object)
+    * [Get product details](#get-product-details)
+    * [Get photobook spine details](#get-photobook-spine-details)
+* [Callbacks](#callbacks)
+    * [Properties](#properties)
+* [ID format](#id-format)
+* [Outcomes](#outcomes)
+    * [General outcomes](#general-outcomes)
+* [Status](#status)
+    * [Status object](#status-object)
+* [Errors](#errors)
+    * [Base error object](#base-error-object)
+    * [TraceParent](#traceparent)
+    * [Generic errors](#generic-errors)
+* [The order process](#the-order-process)
+    * [1. Order creation](#1-order-creation)
+    * [2. Assets download](#2-assets-download)
+    * [3. Lab allocation](#3-lab-allocation)
+    * [4. Asset preparation](#4-asset-preparation)
+    * [5. Lab submission](#5-lab-submission)
+    * [6. Production](#6-production)
+    * [7. Shipping](#7-shipping)
+    * [8. Order completion](#8-order-completion)
+    * [Image retention](#image-retention)
+* [Help & support](#help--support)
+    * [Contact](#contact)
+    * [Guides](#guides)
+    * [Versions](#versions)
+* [Sign up for an API key](#sign-up-for-an-api-key)
 
-# [Sign up for your free API key](https://dashboard.prodigi.com/register "Sign up for your free API key") Introduction
+## Overview
 
 Our RESTful API is built using standard HTTP response codes, authentication and verbs. We accept `application/json` payloads, and return `JSON` on every response.
 
-## Getting started
+### Getting started
 
 Our [guide to placing your first order](https://www.prodigi.com/blog/your-first-print-api-order/ "Your first Prodigi API order") walks through our order process, from authentication to submitting an order to our print network.
 
-# Environments
+## Environments
 
 We have two environments: **Sandbox** and **Live**. Creating a new account on the [Live Dashboard](https://dashboard.prodigi.com/ "Live production dashboard") will automatically set up both a Sandbox and Live account.
 
@@ -87,21 +72,21 @@ We have two environments: **Sandbox** and **Live**. Creating a new account on th
 
 Sandbox is our **testing** environment. It **will not fulfil your orders**, and you will **not be charged** for using it.
 
-*   Sandbox API: **api.sandbox.prodigi.com**
-*   Sandbox dashboard: [sandbox-beta-dashboard.pwinty.com](https://sandbox-beta-dashboard.pwinty.com/ "Sandbox dashboard")
+* Sandbox API: **api.sandbox.prodigi.com**
+* Sandbox dashboard: [sandbox-beta-dashboard.pwinty.com](https://sandbox-beta-dashboard.pwinty.com/ "Sandbox dashboard")
+
+> **Ambiguity:** The official dashboard URL still references the legacy `pwinty.com` domain. Please confirm whether this is still the recommended sandbox entry point or if there is a newer Prodigi-branded host.
 
 ## Live
 
 Live is our **production** environment. Any orders that are placed here **will be produced and shipped**.
 
-*   Live API: **api.prodigi.com**
-*   Live dashboard: [dashboard.prodigi.com](https://dashboard.prodigi.com/ "Production dashboard")
+* Live API: **api.prodigi.com**
+* Live dashboard: [dashboard.prodigi.com](https://dashboard.prodigi.com/ "Production dashboard")
 
-# Authentication
+## Authentication
 
-Using the authentication header
-
-Copy to clipboard
+### Using the authentication header
 
 ```
 curl "https://api.prodigi.com/v4.0/Orders" \
@@ -113,15 +98,19 @@ Each request to our API requires the use of an authentication header: `X-API-Key
 
 You can obtain an API key by [signing up for a free Prodigi account](https://dashboard.prodigi.com/register "Sign up for Prodigi").
 
-# Your API credentials may differ between Sandbox and Live. If you have issues authenticating, please ensure you are using the correct credentials for that environment. Orders
+> **Ambiguity:** Sandbox and Live credentials are issued separately. If authentication fails, double-check that you are using the key for the correct environment. Confirm whether dashboard-issued keys are automatically provisioned for both environments or if a support request is required.
+
+### Sign up for an API key
+
+[Create your Prodigi account](https://dashboard.prodigi.com/register "Sign up for your free API key") to receive sandbox and live credentials.
+
+## Orders
 
 Creating an order is a single API request, supplying all of the relevant information. Once the order is in our system, we will process it according to your account settings, taking into account any configured pause window. Otherwise, we will start to fulfill it immediately.
 
 ## Order object
 
 Order object
-
-Copy to clipboard
 
 ```
 {
@@ -235,7 +224,8 @@ The Order object contains all the information you need to manage your order. Onc
 | `email` | string | no | Recipient's email address |
 | `phoneNumber` | string | no | Recipient's mobile phone number |
 | `address` | [Address](https://www.prodigi.com/print-api/docs/reference/#order-object-address "Order address") | yes | Recipient's address. |
-| While recipient `email` and `phoneNumber` are technically optional, it's highly recommended you include these if you have international orders as they aid couriers with customs issues. For example, contact information is a requirement for any item shipped from the UK. Where necessary, we will substitute with default information if not provided to ensure courier systems accept the order, but relying on this is not advisable. |  |  |  |
+
+> **Recommendation:** While recipient `email` and `phoneNumber` are technically optional, include them for international orders to support customs clearance. Prodigi may substitute placeholder details if they are missing, but relying on that fallback can introduce delivery issues.
 
 ### Address
 
@@ -304,13 +294,14 @@ A generic field that represents the debit or credit for a given item.
 | Parameter | Type | Required | Description |
 | --- | --- | --- | --- |
 | `id` | string | n/a | Unique ID for this shipment. Set by Prodigi. |
-| `status` | string | n/a | A status indicator for the shipment expected values are: `Processing` The shipment has yet to be shipped, `Cancelled` the shipment has been cancelled and `Shipped` The shipment has been shipped. |
+| `status` | string | n/a | Shipment status. Expected values: `Processing` (not yet shipped), `Cancelled`, or `Shipped`. |
 | `carrier` | carrier | n/a | Carrier for this shipment. Set by Prodigi. |
-| `tracking` | tracking | n/a | Tracking information for this shipment. Only be set if an shipment can be tracked. Set by Prodigi. |
+| `tracking` | [Tracking](#tracking) | n/a | Tracking information for this shipment. Populated only when a shipment is trackable. |
 | `dispatchDate` | datetime | n/a | When the lab despatched this shipment. Set by Prodigi. |
 | `items` | array of [Shipment Items](https://www.prodigi.com/print-api/docs/reference/#order-shipment-item "Shipment Item object") | n/a | Helps identify the items in this shipment. Set by Prodigi. |
-| `tracking` | [tracking](https://www.prodigi.com/print-api/docs/reference/#order-object-tracking "Tracking object") | n/a | Url and number of tracking information. |
 | `fulfillmentLocation` | [fulfillmentLocation](https://www.prodigi.com/print-api/docs/reference/#order-object-fulfillment-location "Order fulfillment location object") | n/a | Country and lab fulfilling the shipment. |
+
+> **Ambiguity:** The schema references a `carrier` object, but the fields available on that object are not described in this document. Confirm the expected structure so that integrators can rely on it.
 
 ### Shipment Item
 
@@ -355,7 +346,7 @@ An Asset is an image belonging to a product. Our products support zero, one or m
 | `printArea` | string | yes | Name of the assets print area. Default value is `default`. Examples of other print areas include `spine` (for photobooks) and `lid` (for jigsaws). |
 | `status` | string | n/a | The status of the asset in terms of availability to be processed in production. Values are `complete` the asset has been downloaded for production, `inProgress` the asset is yet to be downloaded and `error` there has been a problem downloading the asset. |
 | `url` | string | yes | URL of the asset. |
-| `thumbnailUrl` | string | yes | URL of the item asset. Please not this may not be present until after the asset has been downloaded and the item allocated a shipment. |
+| `thumbnailUrl` | string | no | URL of the item asset. This is populated after the asset has been downloaded and allocated to a shipment. |
 | `md5Hash` | string | no | If supplied then the image file will be used to generate a corresponding hash that must match this. |
 | `pageCount` | integer | no | Not required by default, but is required when creating orders containing products where additional page pricing is applied - for example: photobooks. |
 
@@ -392,13 +383,11 @@ However, you can also specify a sizing parameter to change this behaviour.
 
 ### Rotation
 
-Pwinty will automatically try to rotate your images so that they need the least possible resizing to fit the product size. For example, if you are creating a 10 x 15 photo, and upload an image that is 4500px x 3000px, then Pwinty will flip it round so it is 3000px x 4500px and thus fits the photo perfectly.
+Prodigi automatically rotates images so that they require the least possible resizing to fit the product size. For example, if you are creating a 10 × 15 photo and upload an image that is 4500 px × 3000 px, Prodigi rotates it to 3000 px × 4500 px so that it fits the product dimensions.
 
 ## Create order
 
 POST/v4.0/orders
-
-Copy to clipboard
 
 ```
 curl "https://api.sandbox.prodigi.com/v4.0/Orders" \
@@ -466,8 +455,6 @@ curl "https://api.sandbox.prodigi.com/v4.0/Orders" \
 ```
 
 Response
-
-Copy to clipboard
 
 ```
 {
@@ -579,8 +566,6 @@ In addition to the [General outcomes](https://www.prodigi.com/print-api/docs/ref
 
 GET/v4.0/orders/{prodigi\_order\_id}
 
-Copy to clipboard
-
 ```
 curl "https://api.sandbox.prodigi.com/v4.0/orders/ord_677258" \
   -X GET \
@@ -588,8 +573,6 @@ curl "https://api.sandbox.prodigi.com/v4.0/orders/ord_677258" \
 ```
 
 Response
-
-Copy to clipboard
 
 ```
 {
@@ -683,8 +666,6 @@ In addition to the [General outcomes](https://www.prodigi.com/print-api/docs/ref
 
 GET/v4.0/orders
 
-Copy to clipboard
-
 ```
 curl "https://api.sandbox.prodigi.com/v4.0/orders" \
   -X GET \
@@ -708,8 +689,6 @@ All of these options are optional. If none are provided, their defaults will be 
 ### Response
 
 Response
-
-Copy to clipboard
 
 ```
 {
@@ -756,8 +735,6 @@ In addition to the [General outcomes](https://www.prodigi.com/print-api/docs/ref
 
 GET/v4.0/orders/{prodigi\_order\_id}/actions
 
-Copy to clipboard
-
 ```
 curl "https://api.sandbox.prodigi.com/v4.0/Orders/ord_123456/actions" \
   -X GET \
@@ -765,8 +742,6 @@ curl "https://api.sandbox.prodigi.com/v4.0/Orders/ord_123456/actions" \
 ```
 
 Response
-
-Copy to clipboard
 
 ```
 {
@@ -814,8 +789,6 @@ In addition to the [General outcomes](https://www.prodigi.com/print-api/docs/ref
 
 POST/v4.0/orders/{prodigi\_order\_id}/actions/cancel
 
-Copy to clipboard
-
 ```
 curl "https://api.sandbox.prodigi.com/v4.0/orders/ord_123456/actions/cancel" \
   -X POST \
@@ -823,8 +796,6 @@ curl "https://api.sandbox.prodigi.com/v4.0/orders/ord_123456/actions/cancel" \
 ```
 
 Response
-
-Copy to clipboard
 
 ```
 {
@@ -939,8 +910,6 @@ Once a configured pause window expires, the order will submit for fulfilment and
 
 POST/v4.0/orders/{prodigi\_order\_id}/actions/updateShippingMethod
 
-Copy to clipboard
-
 ```
 curl "https://api.sandbox.prodigi.com/v4.0/Orders/ord_123456/actions/updateShippingMethod" \
   -X POST \
@@ -949,8 +918,6 @@ curl "https://api.sandbox.prodigi.com/v4.0/Orders/ord_123456/actions/updateShipp
 ```
 
 Response
-
-Copy to clipboard
 
 ```
 {
@@ -1066,8 +1033,6 @@ In addition to the [General outcomes](https://www.prodigi.com/print-api/docs/ref
 
 POST/v4.0/orders/{prodigi\_order\_id}/actions/updateRecipient
 
-Copy to clipboard
-
 ```
 curl "https://api.sandbox.prodigi.com/v4.0/Orders/ord_123456/actions/updateRecipient" \
   -X POST \
@@ -1088,8 +1053,6 @@ curl "https://api.sandbox.prodigi.com/v4.0/Orders/ord_123456/actions/updateRecip
 ```
 
 Response
-
-Copy to clipboard
 
 ```
 {
@@ -1182,8 +1145,6 @@ In addition to the [General outcomes](https://www.prodigi.com/print-api/docs/ref
 
 POST/v4.0/orders/{prodigi\_order\_id}/actions/updatemetadata
 
-Copy to clipboard
-
 ```
 curl "https://api.sandbox.prodigi.com/v4.0/Orders/ord_123456/actions/updateMetadata" \
   -X POST \
@@ -1201,8 +1162,6 @@ curl "https://api.sandbox.prodigi.com/v4.0/Orders/ord_123456/actions/updateMetad
 ```
 
 Response
-
-Copy to clipboard
 
 ```
 {
@@ -1312,8 +1271,6 @@ The Quote endpoint allows you to get pricing and shipping information about a gi
 ## Quote object
 
 Quote object
-
-Copy to clipboard
 
 ```
 {
@@ -1456,8 +1413,6 @@ The `issues` array contains the details of any order issues.
 
 POST/v4.0/quotes
 
-Copy to clipboard
-
 ```
 curl "https://api.sandbox.prodigi.com/v4.0/quotes" \
   -X POST \
@@ -1491,8 +1446,6 @@ curl "https://api.sandbox.prodigi.com/v4.0/quotes" \
 ```
 
 Response
-
-Copy to clipboard
 
 ```
 {
@@ -1627,8 +1580,6 @@ The Product Details endpoint returns all available data for a SKU, such as price
 ## Product Details object
 
 Product Details Object
-
-Copy to clipboard
 
 ```
 {
@@ -1798,8 +1749,6 @@ The Product Details object contains all the information about each product you'v
 
 GET/v4.0/products
 
-Copy to clipboard
-
 ```
 curl "https://api.sandbox.prodigi.com/v4.0/products/GLOBAL-CAN-10x10" \
   -X GET \
@@ -1807,8 +1756,6 @@ curl "https://api.sandbox.prodigi.com/v4.0/products/GLOBAL-CAN-10x10" \
 ```
 
 Response
-
-Copy to clipboard
 
 ```
 {
@@ -1934,8 +1881,6 @@ This endpoint returns the [Product Details](https://www.prodigi.com/print-api/do
 
 POST/v4.0/products/spine
 
-Copy to clipboard
-
 ```
 curl "https://api.prodigi.com/v4.0/products/spine" \
   -X POST \
@@ -1952,8 +1897,6 @@ curl "https://api.prodigi.com/v4.0/products/spine" \
 
 Response
 
-Copy to clipboard
-
 ```
 {
     "success": true,
@@ -1969,8 +1912,6 @@ This endpoint returns the required width of the book spine required for a book w
 # Callbacks
 
 Sample callback
-
-Copy to clipboard
 
 ```
 {
@@ -2046,6 +1987,8 @@ Copy to clipboard
 
 We can send callbacks to your chosen endpoint when an order's stage changes or when a shipment is made (see [Status](https://www.prodigi.com/print-api/docs/reference/#status "Status") for details of the Status and Shipments objects).
 
+> **Ambiguity:** Several sample payloads still reference the legacy "Pwinty" brand (for example, the `"name": "Pwinty Test Order"` value above). Confirm whether those examples should be updated to "Prodigi" to avoid confusion for integrators.
+
 A callback requires a public url, which can be given globally as a setting in your merchant settings in the [dashboard](https://dashboard.prodigi.com/ "Prodigi dashboard"), or on a per-order basis by setting the `callbackUrl` in the [Order](https://www.prodigi.com/print-api/docs/reference/#order-object "Order object") object.
 
 Each callback is in the form of a CloudEvent following the [CloudEvents](https://cloudevents.io/ "CloudEvents") specification.
@@ -2085,8 +2028,6 @@ This shows a change to the order stage: the change is to the order status and it
 [View the CloudEvents spec ↗](https://github.com/cloudevents/spec/blob/v1.0/spec.md#type "CloudEvents spec for type")
 
 Callback Payload
-
-Copy to clipboard
 
 ```
 "data": {
@@ -2138,8 +2079,6 @@ To aid parsing, all Prodigi-assigned IDs in the API have a 3-letter prefix accor
 # Outcomes
 
 Outcome & object in a given response
-
-Copy to clipboard
 
 ```
 {
@@ -2246,8 +2185,6 @@ Each order object provided by the API has an associated Status object that provi
 
 Status object
 
-Copy to clipboard
-
 ```
 {
     "stage":"InProgress",
@@ -2344,8 +2281,6 @@ The `issues` array contains the details of any order issues.
 All errors returned from _authenticated_ requests will have the same basic structure.
 
 Error Response
-
-Copy to clipboard
 
 ```
 {
