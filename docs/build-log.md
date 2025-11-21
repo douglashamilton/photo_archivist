@@ -78,3 +78,11 @@ Summarise each completed slice here. Include:
 - Automated: `pytest`.
 - Manual check: Set `PHOTO_ARCHIVIST_PRODIGI_API_KEY`, run `uvicorn app.main:app --reload`, submit a print order without supplying an API key in the UI, observe the success banner, then stop the server and verify the temporary thumbnail folders under your temp directory disappear.
 
+## 2025-11-21 - Slice 9
+- Scope: docs/slices/slice-9.md kicks off the photo-quality initiative by refactoring the scanner into modular pipeline components that keep functionality unchanged while preparing for richer metrics.
+- Added a `PhotoScore` domain type plus a `metrics` map on `PhotoResult`, updated API serialization/template rendering, and ensured the shortlist UI/JSON continue to surface brightness while remaining ready for future signals (`app/models.py`, `app/main.py`, `app/templates/partials/shortlist.html`).
+- Split the scanner into `FileEnumerator`, `MetadataResolver`, `BrightnessScoringEngine`, and `ShortlistSelector`, wiring them through dependency injection-friendly `run_scan` plumbing and keeping progress callbacks intact (`app/services/scanner.py`).
+- Extended scanner tests with focused coverage for the new components (enumerator filtering, scoring metrics, selector limiting) alongside existing regression checks so shortlist behavior stays pinned (`tests/test_scanner.py`).
+- Automated: `python3 -m pytest -s`.
+- Manual check: `uvicorn app.main:app --reload`, scan a directory covering in-range/out-of-range JPEGs, and confirm progress counts climb, the shortlist still lists the brightest five photos, and brightness values render as before.
+

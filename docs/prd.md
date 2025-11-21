@@ -2,7 +2,7 @@
 
 ### Bottom line
 
-Build Photo Archivist as a lightweight, local Python web app that lets a user choose a photo directory, filter images by date, score each image by brightness, display the top five thumbnails for quick review, and fire-and-forget a 4×6" print order for any (or all) shortlisted photos via the Prodigi (Pwinty) print API sandbox.
+Build Photo Archivist as a lightweight, local Python web app that lets a user choose a photo directory, filter images by date, score each image with extensible quality heuristics (starting with brightness and paving the way for face/composition signals), display the top five thumbnails for quick review, and fire-and-forget a 4×6" print order for any (or all) shortlisted photos via the Prodigi (Pwinty) print API sandbox.
 
 ### Problem Statement
 
@@ -33,7 +33,7 @@ People with large local photo libraries struggle to surface highlights from spec
 
 * Simple UI to choose a local directory and input start/end dates.
 * Recursive scan that filters images by EXIF DateTimeOriginal with fallback to file modified time.
-* Brightness-based scoring applied to each in-range image.
+* Extensible scoring pipeline applied to each in-range image (initial metric = brightness, but the service must support plugging in richer heuristics without touching the UI).
 * Automatic selection and display of the five highest-scoring thumbnails with filename, capture date, and score.
 * Clear shortlist count and ability to rerun the pipeline when the user changes the date window.
 * Automated tests covering date filtering, metadata fallback, brightness scoring, and shortlist selection rules.
@@ -55,7 +55,7 @@ People with large local photo libraries struggle to surface highlights from spec
 * Primary metadata source is EXIF DateTimeOriginal; fall back to file modified time when EXIF is missing.
 * Non-image files must be skipped quickly to keep scans fast.
 * MVP targets JPEG (.jpg) files; other formats are ignored.
-* Brightness scoring can use mean pixel luminance and should be isolated for future metric swaps.
+* Scoring engine starts with mean pixel luminance but stores metric details per photo so alternate heuristics (faces, composition, weather cues) can be layered in later without rescan of the directory traversal stage.
 * Print orders require HTTPS-accessible temporary URLs for each original-resolution asset; thumbnails are insufficient for fulfillment.
 
 ### Acceptance Criteria

@@ -67,7 +67,8 @@
               {{ photo.captured_at.strftime("%Y-%m-%d %H:%M:%S") }}
               {% if photo.used_fallback %}(file modified time fallback){% endif %}
             </p>
-            <p>Brightness score: {{ "%.1f"|format(photo.brightness) }}</p>
+            {% set brightness_score = photo.metrics.get("brightness", photo.brightness) if photo.metrics else photo.brightness %}
+            <p>Brightness score: {{ "%.1f"|format(brightness_score) }}</p>
             <div class="controls">
               {% if photo.selected %}
                 <span class="selection-status">Selected</span>

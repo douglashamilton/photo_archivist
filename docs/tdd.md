@@ -2,12 +2,12 @@
 
 ### Bottom line
 
-Photo Archivist MVP ships as a local FastAPI (Python 3.12) web app using Jinja + HTMX for a lightweight UI that lets the user choose a directory, filter images by date, run a Pillow-backed brightness scan in the background, render the five brightest thumbnails with file metadata, and submit selected photos as 4×6" print orders to the Prodigi (Pwinty) sandbox.
+Photo Archivist MVP ships as a local FastAPI (Python 3.12) web app using Jinja + HTMX for a lightweight UI that lets the user choose a directory, filter images by date, run an extensible Pillow-backed scan pipeline in the background (initial metric = brightness), render the five highest-scoring thumbnails with file metadata, and submit selected photos as 4×6" print orders to the Prodigi (Pwinty) sandbox.
 
 ### Architecture Overview
 
 * **Stack:** Python 3.12, FastAPI 0.115, Uvicorn for dev server, Jinja2 templates with HTMX for partial updates, Pydantic models, Pillow 11 for image I/O, httpx for outbound Prodigi calls, pytest + httpx for tests, Ruff (lint + format), and pre-commit to wire everything together.
-* **App structure:** Server-rendered views served by FastAPI; HTMX drives form submissions and result refreshes, while domain logic lives in a `services` module (scan orchestration, metadata extraction, scoring, print ordering). Application state (scan jobs) is kept in an in-memory registry owned by a `ScanManager`.
+* **App structure:** Server-rendered views served by FastAPI; HTMX drives form submissions and result refreshes, while domain logic lives in a `services` module (scan orchestration, metadata extraction, scoring, print ordering). The scanner is composed as a pipeline of strategies (file discovery, metadata resolver, scoring engine, selector) so future heuristics plug in without rewriting traversal. Application state (scan jobs) is kept in an in-memory registry owned by a `ScanManager`.
 * **Data storage:** No persistent store; scan results are cached per job in memory until replaced. Thumbnail binaries are generated on demand and memoized in a temp directory for the session (cleaned on shutdown). Print order payloads and their Prodigi responses are tracked in memory long enough to surface confirmation.
 * **Auth:** None; app runs locally and trusts the invoking user. Prodigi credentials (API key) are injected via environment variable (`PHOTO_ARCHIVIST_PRODIGI_API_KEY`) and never echoed back into the UI.
 * **Deployment & environments:** Local dev via `uvicorn app.main:app --reload`; CI runs pytest and Ruff. Distribution via `pip install -e .` or packaged executable (future slice). Requires outbound HTTPS access to the Prodigi sandbox (`https://api.prodigi.com/v4.0/`).
@@ -17,7 +17,7 @@ Photo Archivist MVP ships as a local FastAPI (Python 3.12) web app using Jinja +
 * **Language/runtime:** Python 3.12 aligns with PRD requirement and provides `pathlib`/typing improvements.
 * **Web framework:** FastAPI gives async routing, background tasks, and automatic validation via Pydantic for request payloads.
 * **Templating/UI:** Jinja2 keeps rendering simple; HTMX enables partial HTML responses for progress/status without a SPA build step.
-* **Image processing:** Pillow 11 handles JPEG EXIF parsing, resizing, and luminance scoring (`ImageStat.mean`).
+* **Image processing:** Pillow 11 handles JPEG EXIF parsing, resizing, and luminance scoring (`ImageStat.mean`). The scoring layer exposes a strategy interface so we can augment the initial brightness metric with additional photo-quality signals.
 * **File system:** `pathlib` + `os.scandir` for performant recursive traversal and filtering; `piexif` is optional but not required because Pillow covers the needed EXIF tags.
 * **Background execution:** FastAPI `BackgroundTasks` plus an internal thread pool (via `concurrent.futures.ThreadPoolExecutor`) isolate long-running scans while keeping the main loop responsive.
 * **Validation & schema:** Pydantic models encapsulate `ScanRequest`, `ScanStatus`, `PhotoResult`, and print order DTOs with input validation.
@@ -48,11 +48,20 @@ Photo Archivist MVP ships as a local FastAPI (Python 3.12) web app using Jinja +
 * **ScanManager:** orchestrates job lifecycle, holds an in-memory `Dict[UUID, ScanStatus]` and `Dict[UUID, List[PhotoResult]]`, exposes thread-safe read/write, limits retained completed jobs (default 5) so history doesn’t grow unbounded, and exposes a shutdown hook that drains executors plus thumbnail caches.
 * **PrintOrderService:** coordinates asset publication, builds Prodigi payloads, handles HTTP requests, caches order status, and exposes polling helpers.
 
+### Scan pipeline composition
+
+* **FileEnumerator:** wraps `Path.rglob` with allowlisted extensions and emits total counts early so progress updates stay responsive even before scoring runs.
+* **MetadataResolver:** centralises EXIF parsing + filesystem fallbacks and will host future enrichment (faces, GPS) without touching traversal logic.
+* **ScoringEngine:** receives normalized metadata + Pillow image handles, calculates per-metric values (initially brightness only), and returns an aggregate `PhotoScore`.
+* **Selector:** consumes `PhotoScore` objects, handles tie-breaking, and truncates to the shortlist target, ensuring UI/API ordering is stable regardless of metric additions.
+
+`run_scan` wires these strategies together but each component remains swappable for tests or future slices that add ML heuristics.
+
 ### Data flow & interfaces
 
 * **Inbound scans:** Browser form submission (HTMX POST) -> FastAPI controller (/api/scans) -> ScanManager enqueues job -> background worker walks directory -> metadata extractor -> scoring service -> shortlist reducer (top five) -> cache results.
-* **Processing pipeline:** For each JPEG, read EXIF DateTimeOriginal; if missing/unparseable, use file modified time. Skip files outside range. Generate downscaled thumbnail (max 256px longest edge) and compute brightness (mean luminance). Maintain a min-heap of top five by brightness to avoid storing the full set.
-* **Outbound shortlist:** When job completes, API response and HTML fragment include five results sorted by brightness descending, with filename, capture date, brightness score, thumbnail URL, and selection state. HTMX swaps the shortlist section in place.
+* **Processing pipeline:** For each JPEG, the enumerator streams files to the metadata resolver (EXIF -> fallback). Skip files outside range, then pass the Pillow handle to the scoring engine which computes the configured metrics (currently mean luminance) and emits a weighted score. Maintain a selector/min-heap that always exposes the top five aggregate scores without holding the entire corpus.
+* **Outbound shortlist:** When job completes, API response and HTML fragment include five results sorted by aggregate score descending, with filename, capture date, metric breakdown (starting with brightness), thumbnail URL, and selection state. HTMX swaps the shortlist section in place.
 * **Print flow:** POST /api/prints validates the referenced scan and selection, ensures each photo has an accessible temporary HTTPS URL (via an AssetPublisher abstraction that can upload or share the original file), composes a Prodigi order payload with GLOBAL-PRINT-4X6 SKU (or configured variant), and submits it with httpx using the sandbox base URL. Responses cache the Prodigi orderId. A background poller (or lazy on-demand polling) hydrates PrintOrderStatus via GET /v4.0/orders/{id} until the order is acknowledged or fails, surfacing status to the UI.
 
 ```http
@@ -113,7 +122,7 @@ Response (202): { "orderId": "PO-123456", "status": "submitted" }
 * Chromium-based browsers (Chrome/Edge) are the primary target; Firefox/Safari users can supply paths manually in a fallback input for MVP.
 * Average library fits in memory for job metadata (<10k entries); scaling beyond this is a future slice.
 * Users run the app from an account with read access to the chosen directory.
-* Brightness scoring using mean luminance is an acceptable proxy for MVP despite subjective quality differences.
+* Brightness-based scoring remains the first heuristic, but the pipeline is expected to fold in richer quality signals as soon as they are validated.
 * Shortlist state is transient; users accept rescanning when the app restarts.
 * Users will configure a Prodigi API key (sandbox for dev) via `PHOTO_ARCHIVIST_PRODIGI_API_KEY` (or a secrets manager) and payment method outside the app before ordering prints.
 * The app can publish temporary HTTPS asset URLs for selected photos without manual intervention (e.g., via configurable storage).

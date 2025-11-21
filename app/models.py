@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, timezone
 from enum import Enum
 from pathlib import Path
-from typing import Any
+from typing import Any, Dict
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
@@ -39,6 +39,7 @@ class PhotoResult:
     captured_at: datetime
     brightness: float
     used_fallback: bool
+    metrics: Dict[str, float] = field(default_factory=dict)
     thumbnail_path: Path | None = None
     thumbnail_generated_at: datetime | None = None
     selected: bool = False
@@ -60,6 +61,20 @@ class PhotoResult:
             captured_at=captured_at,
             brightness=brightness,
             used_fallback=used_fallback,
+            metrics={"brightness": brightness},
+        )
+
+    @classmethod
+    def from_score(cls, score: "PhotoScore") -> "PhotoResult":
+        brightness_value = score.metrics.get("brightness", score.score)
+        return cls(
+            id=uuid4(),
+            path=score.path,
+            filename=score.filename,
+            captured_at=score.captured_at,
+            brightness=brightness_value,
+            used_fallback=score.used_fallback,
+            metrics=score.metrics,
         )
 
 
@@ -68,6 +83,16 @@ class ScanOutcome:
     results: list[PhotoResult]
     total_files: int
     matched_files: int
+
+
+@dataclass(slots=True)
+class PhotoScore:
+    path: Path
+    filename: str
+    captured_at: datetime
+    used_fallback: bool
+    score: float
+    metrics: Dict[str, float]
 
 
 class ScanState(str, Enum):

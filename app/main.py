@@ -613,6 +613,7 @@ def _serialize_status(status: Optional[ScanStatus], outcome: Optional[ScanOutcom
                 "filename": photo.filename,
                 "captured_at": photo.captured_at.isoformat(),
                 "brightness": photo.brightness,
+                "metrics": photo.metrics,
                 "used_fallback": photo.used_fallback,
                 "path": str(photo.path),
                 "thumbnail_url": f"/api/thumbnails/{status.id}/{photo.id}" if photo.thumbnail_path else None,

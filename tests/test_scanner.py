@@ -4,8 +4,13 @@ from uuid import UUID
 
 from PIL import Image
 
-from app.models import ScanRequest
-from app.services.scanner import run_scan
+from app.models import PhotoScore, ScanRequest
+from app.services.scanner import (
+    BrightnessScoringEngine,
+    FileEnumerator,
+    ShortlistSelector,
+    run_scan,
+)
 
 
 def _create_image(path, color, modified_at: datetime) -> None:
@@ -40,6 +45,7 @@ def test_run_scan_filters_by_date_and_limits_shortlist(tmp_path):
     assert outcome.results[0].brightness > outcome.results[1].brightness
     assert all(isinstance(photo.id, UUID) for photo in outcome.results)
     assert all(photo.thumbnail_path is None for photo in outcome.results)
+    assert all(photo.metrics.get("brightness") == photo.brightness for photo in outcome.results)
 
 
 def test_run_scan_accepts_additional_jpeg_extensions(tmp_path):
@@ -80,3 +86,57 @@ def test_run_scan_reports_progress_incrementally(tmp_path):
     assert calls[0] == (0, 0, 0)
     assert any(total >= 1 for _, total, _ in calls[1:]), "Expected total to grow during iteration"
     assert calls[-1] == (2, 2, 2)
+
+
+def test_file_enumerator_filters_non_jpeg_files(tmp_path):
+    jpeg_path = tmp_path / "keep.jpg"
+    other_path = tmp_path / "ignore.png"
+    _create_image(jpeg_path, (255, 255, 255), datetime(2024, 1, 1, tzinfo=timezone.utc))
+    other_path.write_text("not an image")
+
+    enumerator = FileEnumerator()
+    files = {path.name for path in enumerator.iter_files(tmp_path)}
+
+    assert files == {"keep.jpg"}
+
+
+def test_brightness_scoring_engine_reports_metrics(tmp_path):
+    image_path = tmp_path / "metric.jpg"
+    captured_at = datetime(2024, 1, 5, tzinfo=timezone.utc)
+    _create_image(image_path, (200, 200, 200), captured_at)
+
+    scoring_engine = BrightnessScoringEngine()
+    with Image.open(image_path) as image:
+        score = scoring_engine.score(image_path, image, captured_at, used_fallback=False)
+
+    assert score.metrics["brightness"] == score.score
+    assert score.filename == "metric.jpg"
+    assert not score.used_fallback
+
+
+def test_shortlist_selector_limits_results(tmp_path):
+    selector = ShortlistSelector(limit=1)
+    base_time = datetime(2024, 1, 1, tzinfo=timezone.utc)
+    high_score = PhotoScore(
+        path=tmp_path / "high.jpg",
+        filename="high.jpg",
+        captured_at=base_time,
+        used_fallback=False,
+        score=200.0,
+        metrics={"brightness": 200.0},
+    )
+    low_score = PhotoScore(
+        path=tmp_path / "low.jpg",
+        filename="low.jpg",
+        captured_at=base_time,
+        used_fallback=False,
+        score=100.0,
+        metrics={"brightness": 100.0},
+    )
+
+    selector.consider(low_score)
+    selector.consider(high_score)
+
+    results = selector.results()
+    assert len(results) == 1
+    assert results[0].filename == "high.jpg"
