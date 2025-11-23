@@ -86,3 +86,11 @@ Summarise each completed slice here. Include:
 - Automated: `python3 -m pytest -s`.
 - Manual check: `uvicorn app.main:app --reload`, scan a directory covering in-range/out-of-range JPEGs, and confirm progress counts climb, the shortlist still lists the brightest five photos, and brightness values render as before.
 
+## 2025-11-23 - Slice 10
+- Scope: docs/slices/slice-10.md delivers cheap quality filtering, phash dedupe, and aesthetic ranking atop the scanner.
+- Implemented QualityGate (brightness/contrast/Laplacian blur/resolution/aspect) plus perceptual hashing and burst clustering (distance ≤5, keep top 2) before aesthetic scoring; cached aesthetic scorer defaults to a LAION/AVA head with stub fallback and file-hash cache (`app/services/scanner.py`, `app/models.py`).
+- Updated shortlist rendering and API payloads to surface quality status/notes, metrics (aesthetic, brightness, contrast, sharpness, resolution, aspect), and cluster info while summarizing discarded frames; expanded PRD/TDD to match the new pipeline defaults (`app/templates/partials/shortlist.html`, `app/main.py`, `docs/prd.md`, `docs/tdd.md`).
+- Added dependency updates for OpenCV-headless, imagehash, transformers, torch, and new tests covering quality gating, dedupe, and slower polling tolerance; ensured synthetic fixtures use realistic resolutions (`pyproject.toml`, `tests/test_scanner.py`, `tests/test_app.py`).
+- Automated: `.venv/Scripts/python.exe -m pytest`.
+- Manual check: Run `uvicorn app.main:app --reload`, scan a folder with bright/dim/blurred and near-duplicate shots, confirm dark/blurred/tiny/extreme-aspect frames drop or are marked soft, burst groups only keep the best two with cluster info, and shortlisted items show aesthetic + cheap metrics with top 5 sorted by aesthetic/ sharpness.
+

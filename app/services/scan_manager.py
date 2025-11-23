@@ -50,6 +50,7 @@ class ScanManager:
             results=list(outcome.results),
             total_files=outcome.total_files,
             matched_files=outcome.matched_files,
+            discarded_files=outcome.discarded_files,
         )
 
     def get_selected_results(self, scan_id: UUID) -> list[PhotoResult]:
@@ -65,7 +66,12 @@ class ScanManager:
             outcome = self._outcomes.get(scan_id)
         status_copy = replace(status) if status is not None else None
         outcome_copy = (
-            ScanOutcome(results=list(outcome.results), total_files=outcome.total_files, matched_files=outcome.matched_files)
+            ScanOutcome(
+                results=list(outcome.results),
+                total_files=outcome.total_files,
+                matched_files=outcome.matched_files,
+                discarded_files=outcome.discarded_files,
+            )
             if outcome is not None
             else None
         )
@@ -126,6 +132,7 @@ class ScanManager:
                     results=list(outcome.results),
                     total_files=outcome.total_files,
                     matched_files=outcome.matched_files,
+                    discarded_files=outcome.discarded_files,
                 ), False
 
             target.selected = selected
@@ -135,6 +142,7 @@ class ScanManager:
                     results=list(outcome.results),
                     total_files=outcome.total_files,
                     matched_files=outcome.matched_files,
+                    discarded_files=outcome.discarded_files,
                 ),
                 True,
             )

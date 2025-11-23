@@ -42,7 +42,10 @@
   {% elif results %}
     <header>
       <h2>Top {{ results|length }} photos</h2>
-      <p>Matched {{ summary.matched }} of {{ summary.total }} JPEG files.</p>
+      <p>
+        Matched {{ summary.matched }} of {{ summary.total }} JPEG files.
+        {% if summary.discarded %}Filtered out {{ summary.discarded }} for quality or duplication.{% endif %}
+      </p>
     </header>
     <ol>
       {% for photo in results %}
@@ -68,7 +71,24 @@
               {% if photo.used_fallback %}(file modified time fallback){% endif %}
             </p>
             {% set brightness_score = photo.metrics.get("brightness", photo.brightness) if photo.metrics else photo.brightness %}
-            <p>Brightness score: {{ "%.1f"|format(brightness_score) }}</p>
+            {% set contrast_score = photo.metrics.get("contrast", 0.0) if photo.metrics else 0.0 %}
+            {% set sharpness_score = photo.metrics.get("sharpness", 0.0) if photo.metrics else 0.0 %}
+            {% set aesthetic_score = photo.metrics.get("aesthetic", 0.0) if photo.metrics else 0.0 %}
+            <p>
+              Quality: {{ photo.quality_status|capitalize }}{% if photo.quality_notes %} ({{ photo.quality_notes|join(", ") }}){% endif %}
+            </p>
+            <ul>
+              <li>Aesthetic: {{ "%.2f"|format(aesthetic_score) }}</li>
+              <li>Sharpness (Laplacian var): {{ "%.1f"|format(sharpness_score) }}{% if photo.quality_status == "soft" %} — soft{% endif %}</li>
+              <li>Brightness: {{ "%.1f"|format(brightness_score) }}</li>
+              <li>Contrast: {{ "%.1f"|format(contrast_score) }}</li>
+              {% if photo.metrics and photo.metrics.get("width") and photo.metrics.get("height") %}
+                <li>Resolution: {{ photo.metrics["width"]|int }}×{{ photo.metrics["height"]|int }} (aspect {{ "%.2f"|format(photo.metrics.get("aspect_ratio", 0.0)) }})</li>
+              {% endif %}
+              {% if photo.cluster_id %}
+                <li>Burst: {{ photo.cluster_id }} (rank {{ photo.cluster_rank }} of {{ photo.cluster_size }})</li>
+              {% endif %}
+            </ul>
             <div class="controls">
               {% if photo.selected %}
                 <span class="selection-status">Selected</span>
@@ -95,7 +115,7 @@
       {% endfor %}
     </ol>
   {% elif scan_attempted %}
-    <p>No photos found within the selected date range.</p>
+    <p>No photos survived the selected date range and quality filters.{% if summary.discarded %} {{ summary.discarded }} images were discarded for being dark, soft, or near-duplicates.{% endif %}</p>
   {% else %}
     <p>No scan requested yet.</p>
   {% endif %}

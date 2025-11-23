@@ -2,11 +2,11 @@
 
 ### Bottom line
 
-Photo Archivist MVP ships as a local FastAPI (Python 3.12) web app using Jinja + HTMX for a lightweight UI that lets the user choose a directory, filter images by date, run an extensible Pillow-backed scan pipeline in the background (initial metric = brightness), render the five highest-scoring thumbnails with file metadata, and submit selected photos as 4×6" print orders to the Prodigi (Pwinty) sandbox.
+Photo Archivist MVP ships as a local FastAPI (Python 3.12) web app using Jinja + HTMX for a lightweight UI that lets the user choose a directory, filter images by date, run an extensible Pillow-backed scan pipeline in the background (cheap quality gates + perceptual dedupe + aesthetic scoring), render the five highest-scoring thumbnails with file metadata, and submit selected photos as 4×6" print orders to the Prodigi (Pwinty) sandbox.
 
 ### Architecture Overview
 
-* **Stack:** Python 3.12, FastAPI 0.115, Uvicorn for dev server, Jinja2 templates with HTMX for partial updates, Pydantic models, Pillow 11 for image I/O, httpx for outbound Prodigi calls, pytest + httpx for tests, Ruff (lint + format), and pre-commit to wire everything together.
+* **Stack:** Python 3.12, FastAPI 0.115, Uvicorn for dev server, Jinja2 templates with HTMX for partial updates, Pydantic models, Pillow 11 for image I/O, OpenCV-headless for Laplacian blur checks, imagehash for perceptual hashing, transformers + torch for the aesthetic model (with a stub fallback for offline/dev), httpx for outbound Prodigi calls, pytest + httpx for tests, Ruff (lint + format), and pre-commit to wire everything together.
 * **App structure:** Server-rendered views served by FastAPI; HTMX drives form submissions and result refreshes, while domain logic lives in a `services` module (scan orchestration, metadata extraction, scoring, print ordering). The scanner is composed as a pipeline of strategies (file discovery, metadata resolver, scoring engine, selector) so future heuristics plug in without rewriting traversal. Application state (scan jobs) is kept in an in-memory registry owned by a `ScanManager`.
 * **Data storage:** No persistent store; scan results are cached per job in memory until replaced. Thumbnail binaries are generated on demand and memoized in a temp directory for the session (cleaned on shutdown). Print order payloads and their Prodigi responses are tracked in memory long enough to surface confirmation.
 * **Auth:** None; app runs locally and trusts the invoking user. Prodigi credentials (API key) are injected via environment variable (`PHOTO_ARCHIVIST_PRODIGI_API_KEY`) and never echoed back into the UI.
@@ -17,7 +17,7 @@ Photo Archivist MVP ships as a local FastAPI (Python 3.12) web app using Jinja +
 * **Language/runtime:** Python 3.12 aligns with PRD requirement and provides `pathlib`/typing improvements.
 * **Web framework:** FastAPI gives async routing, background tasks, and automatic validation via Pydantic for request payloads.
 * **Templating/UI:** Jinja2 keeps rendering simple; HTMX enables partial HTML responses for progress/status without a SPA build step.
-* **Image processing:** Pillow 11 handles JPEG EXIF parsing, resizing, and luminance scoring (`ImageStat.mean`). The scoring layer exposes a strategy interface so we can augment the initial brightness metric with additional photo-quality signals.
+* **Image processing:** Pillow 11 handles JPEG EXIF parsing, resizing, and luminance scoring (`ImageStat.mean`). OpenCV Laplacian variance surfaces blur/sharpness, and a QualityGate drops/flags dark, low-contrast, blurry, low-res, or extreme-aspect images before heavier work. The scoring layer exposes a strategy interface to keep adding signals without disrupting traversal.
 * **File system:** `pathlib` + `os.scandir` for performant recursive traversal and filtering; `piexif` is optional but not required because Pillow covers the needed EXIF tags.
 * **Background execution:** FastAPI `BackgroundTasks` plus an internal thread pool (via `concurrent.futures.ThreadPoolExecutor`) isolate long-running scans while keeping the main loop responsive.
 * **Validation & schema:** Pydantic models encapsulate `ScanRequest`, `ScanStatus`, `PhotoResult`, and print order DTOs with input validation.
@@ -39,9 +39,9 @@ Photo Archivist MVP ships as a local FastAPI (Python 3.12) web app using Jinja +
 ### Domain model
 
 * **ScanRequest:** `{ id: UUID, directory: Path, start_date: date, end_date: date, requested_at: datetime }`.
-* **ScanStatus:** `{ id: UUID, state: Enum[queued,running,complete,error], processed: int, total: int, updated_at: datetime, message: str|None }`.
+* **ScanStatus:** `{ id: UUID, state: Enum[queued,running,complete,error], processed: int, total: int, matched: int, updated_at: datetime, message: str|None }`.
 * **PhotoMetadata:** `{ path: Path, filename: str, captured_at: datetime, modified_at: datetime, used_fallback: bool }`.
-* **PhotoResult:** `{ id: UUID, metadata: PhotoMetadata, brightness: float, thumbnail_path: Path, generated_at: datetime, selected: bool }`.
+* **PhotoResult:** `{ id: UUID, metadata: PhotoMetadata, brightness: float, metrics: Dict[str, float], quality_status: Literal["keep","soft"], quality_notes: list[str], cluster_id: str|None, cluster_rank: int|None, cluster_size: int|None, thumbnail_path: Path, generated_at: datetime, selected: bool }`.
 * **PrintAsset:** `{ id: UUID, photo_id: UUID, source_path: Path, public_url: HttpUrl, uploaded_at: datetime, expires_at: datetime }`.
 * **PrintOrderRequest:** `{ scan_id: UUID, photo_ids: List[UUID], recipient: Recipient, shipping_method: str, copies: int }`.
 * **PrintOrderStatus:** `{ id: str, state: Enum[submitted,failed,complete], submitted_at: datetime, updated_at: datetime, prodigi_reference: str, failure_reason: str|None }`.
@@ -52,16 +52,18 @@ Photo Archivist MVP ships as a local FastAPI (Python 3.12) web app using Jinja +
 
 * **FileEnumerator:** wraps `Path.rglob` with allowlisted extensions and emits total counts early so progress updates stay responsive even before scoring runs.
 * **MetadataResolver:** centralises EXIF parsing + filesystem fallbacks and will host future enrichment (faces, GPS) without touching traversal logic.
-* **ScoringEngine:** receives normalized metadata + Pillow image handles, calculates per-metric values (initially brightness only), and returns an aggregate `PhotoScore`.
-* **Selector:** consumes `PhotoScore` objects, handles tie-breaking, and truncates to the shortlist target, ensuring UI/API ordering is stable regardless of metric additions.
+* **QualityGate:** computes quick metrics (brightness, contrast, Laplacian variance, resolution, aspect ratio) and drops or flags dark, low-contrast, blurry, tiny, or extreme-aspect frames before heavier work. Metrics flow through for debugging and stub scoring.
+* **PerceptualHasher + PhashClusterer:** compute perceptual hashes and cluster candidates by Hamming distance (≤5), keeping the best two per burst using sharpness/brightness as a pre-aesthetic tie-break.
+* **AestheticScoringEngine:** lazily loads a Hugging Face aesthetic head (default LAION/AVA) with in-memory caching keyed by file hash; falls back to a cheap heuristic stub when disabled or unavailable.
+* **Selector:** consumes `PhotoScore` objects, favors higher aesthetic scores with sharpness/quality status as tie-breakers, and truncates to the shortlist target, ensuring UI/API ordering is stable regardless of metric additions.
 
 `run_scan` wires these strategies together but each component remains swappable for tests or future slices that add ML heuristics.
 
 ### Data flow & interfaces
 
-* **Inbound scans:** Browser form submission (HTMX POST) -> FastAPI controller (/api/scans) -> ScanManager enqueues job -> background worker walks directory -> metadata extractor -> scoring service -> shortlist reducer (top five) -> cache results.
-* **Processing pipeline:** For each JPEG, the enumerator streams files to the metadata resolver (EXIF -> fallback). Skip files outside range, then pass the Pillow handle to the scoring engine which computes the configured metrics (currently mean luminance) and emits a weighted score. Maintain a selector/min-heap that always exposes the top five aggregate scores without holding the entire corpus.
-* **Outbound shortlist:** When job completes, API response and HTML fragment include five results sorted by aggregate score descending, with filename, capture date, metric breakdown (starting with brightness), thumbnail URL, and selection state. HTMX swaps the shortlist section in place.
+* **Inbound scans:** Browser form submission (HTMX POST) -> FastAPI controller (/api/scans) -> ScanManager enqueues job -> background worker walks directory -> metadata extractor -> quality gate -> perceptual hash clustering -> aesthetic scoring -> shortlist reducer (top five) -> cache results.
+* **Processing pipeline:** For each JPEG, the enumerator streams files to the metadata resolver (EXIF -> fallback). Skip files outside range, then apply the QualityGate; drop or flag low-quality frames, cluster near-duplicates via perceptual hashes, keep at most two per burst, and only then invoke the aesthetic scorer (cached per file hash). Maintain a selector/min-heap that always exposes the top five aggregate scores without holding the entire corpus.
+* **Outbound shortlist:** When job completes, API response and HTML fragment include five results sorted by aesthetic score descending (sharpness tie-break), with filename, capture date, cheap metrics (brightness/contrast/sharpness/resolution/aspect), cluster info, aesthetic score, thumbnail URL, and selection state. HTMX swaps the shortlist section in place.
 * **Print flow:** POST /api/prints validates the referenced scan and selection, ensures each photo has an accessible temporary HTTPS URL (via an AssetPublisher abstraction that can upload or share the original file), composes a Prodigi order payload with GLOBAL-PRINT-4X6 SKU (or configured variant), and submits it with httpx using the sandbox base URL. Responses cache the Prodigi orderId. A background poller (or lazy on-demand polling) hydrates PrintOrderStatus via GET /v4.0/orders/{id} until the order is acknowledged or fails, surfacing status to the UI.
 
 ```http

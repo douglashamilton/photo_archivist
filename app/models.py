@@ -40,6 +40,11 @@ class PhotoResult:
     brightness: float
     used_fallback: bool
     metrics: Dict[str, float] = field(default_factory=dict)
+    quality_status: str = "keep"
+    quality_notes: list[str] = field(default_factory=list)
+    cluster_id: str | None = None
+    cluster_size: int | None = None
+    cluster_rank: int | None = None
     thumbnail_path: Path | None = None
     thumbnail_generated_at: datetime | None = None
     selected: bool = False
@@ -75,6 +80,11 @@ class PhotoResult:
             brightness=brightness_value,
             used_fallback=score.used_fallback,
             metrics=score.metrics,
+            quality_status=score.quality_status,
+            quality_notes=list(score.quality_notes),
+            cluster_id=score.cluster_id,
+            cluster_size=score.cluster_size,
+            cluster_rank=score.cluster_rank,
         )
 
 
@@ -83,6 +93,7 @@ class ScanOutcome:
     results: list[PhotoResult]
     total_files: int
     matched_files: int
+    discarded_files: int = 0
 
 
 @dataclass(slots=True)
@@ -93,6 +104,13 @@ class PhotoScore:
     used_fallback: bool
     score: float
     metrics: Dict[str, float]
+    quality_status: str = "keep"
+    quality_notes: list[str] = field(default_factory=list)
+    quality_score: float | None = None
+    phash: str | None = None
+    cluster_id: str | None = None
+    cluster_size: int | None = None
+    cluster_rank: int | None = None
 
 
 class ScanState(str, Enum):

@@ -2,7 +2,7 @@
 
 ### Bottom line
 
-Build Photo Archivist as a lightweight, local Python web app that lets a user choose a photo directory, filter images by date, score each image with extensible quality heuristics (starting with brightness and paving the way for face/composition signals), display the top five thumbnails for quick review, and fire-and-forget a 4×6" print order for any (or all) shortlisted photos via the Prodigi (Pwinty) print API sandbox.
+ Build Photo Archivist as a lightweight, local Python web app that lets a user choose a photo directory, filter images by date, drop low-quality frames via cheap CPU-friendly gates (brightness/contrast/blur/resolution/aspect), de-duplicate bursts with perceptual hashes, rank remaining shots with a single aesthetic score, display the top five thumbnails with their metrics for quick review, and fire-and-forget a 4×6" print order for any (or all) shortlisted photos via the Prodigi (Pwinty) print API sandbox.
 
 ### Problem Statement
 
@@ -33,8 +33,10 @@ People with large local photo libraries struggle to surface highlights from spec
 
 * Simple UI to choose a local directory and input start/end dates.
 * Recursive scan that filters images by EXIF DateTimeOriginal with fallback to file modified time.
-* Extensible scoring pipeline applied to each in-range image (initial metric = brightness, but the service must support plugging in richer heuristics without touching the UI).
-* Automatic selection and display of the five highest-scoring thumbnails with filename, capture date, and score.
+* Extensible scoring pipeline applied to each in-range image with cheap gates first (brightness/contrast/blur/resolution/aspect) so mushy or tiny frames are dropped before heavier work.
+* Perceptual-hash deduplication that groups near-duplicates (Hamming distance ≤5) and keeps only the best two per burst, with cluster metadata passed through for debugging.
+* Aesthetic scoring (LAION/AVA head via Hugging Face) on the remaining images, cached per file hash, with sharpness as a tie-breaker so the five most appealing thumbnails surface first.
+* Automatic selection and display of the five highest-scoring thumbnails with filename, capture date, aesthetic score, and cheap quality metrics.
 * Clear shortlist count and ability to rerun the pipeline when the user changes the date window.
 * Automated tests covering date filtering, metadata fallback, brightness scoring, and shortlist selection rules.
 * Fire-and-forget order submission for selected shortlist photos to the Prodigi print API sandbox using temporary public asset URLs, capturing the returned order reference for user feedback.
@@ -55,14 +57,18 @@ People with large local photo libraries struggle to surface highlights from spec
 * Primary metadata source is EXIF DateTimeOriginal; fall back to file modified time when EXIF is missing.
 * Non-image files must be skipped quickly to keep scans fast.
 * MVP targets JPEG (.jpg) files; other formats are ignored.
-* Scoring engine starts with mean pixel luminance but stores metric details per photo so alternate heuristics (faces, composition, weather cues) can be layered in later without rescan of the directory traversal stage.
+* Cheap quality metrics include mean luminance, luminance standard deviation (contrast), Laplacian variance (blur/sharpness), resolution, and aspect ratio with defaults: drop if mean L < 30 or contrast < 10, flag soft if L < 50 or blur variance < 120 (drop < 50), and drop if min dimension < 600px or aspect outside 0.33–3.
+* Perceptual hashes use a Hamming distance threshold of 5; keep the top two images per cluster before running the aesthetic model.
+* Scoring engine records all metrics per photo so alternate heuristics (faces, composition, weather cues) can be layered in later without rescan of the directory traversal stage.
 * Print orders require HTTPS-accessible temporary URLs for each original-resolution asset; thumbnails are insufficient for fulfillment.
 
 ### Acceptance Criteria
 
 * User selects a directory and date range and receives feedback that the scan is in progress.
 * Only images inside the date range are included in scoring.
-* Exactly five images with the highest brightness scores are shown with thumbnails, file names, capture dates, and scores.
+* Exactly five images with the highest aesthetic scores are shown with thumbnails, file names, capture dates, cheap metrics (brightness/contrast/sharpness), and aesthetic score; sharpness breaks ties.
+* Low-quality frames are dropped when mean luminance < 30, contrast < 10, Laplacian variance < 50, min dimension < 600px, or aspect ratio < 0.33/>3. Frames between thresholds (e.g., dim or soft blur) are marked “soft” but kept.
+* Near-duplicate images are grouped via perceptual hash distance ≤5 and trimmed to the best two per cluster before aesthetic scoring; cluster identifiers are surfaced for debugging.
 * Updating the date range reruns the scan and refreshes the shortlist without a page reload.
 * Submitting a print request for a subset of shortlist photos creates a Prodigi sandbox order with the `GLOBAL-PRINT-4X6` (or equivalent) SKU, returning an order identifier and indicating success/failure to the user.
 * Automated tests for filtering, scoring logic, shortlist selection, and order payload construction run successfully.

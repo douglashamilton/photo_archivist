@@ -7,16 +7,20 @@ from datetime import datetime, timezone
 import httpx
 import pytest
 from httpx import ASGITransport, AsyncClient, MockTransport
-from PIL import Image
+from PIL import Image, ImageDraw
 
 from app.main import app, print_order_service
 from app.services import print_orders
 from urllib.parse import urlencode
 
 
-def _create_image(path, color, modified_at: datetime) -> None:
-    image = Image.new("RGB", (16, 16), color=color)
-    image.save(path, format="JPEG")
+def _create_image(path, color, modified_at: datetime, size: tuple[int, int] = (800, 800)) -> None:
+    image = Image.new("RGB", size, color=color)
+    draw = ImageDraw.Draw(image)
+    accent = tuple(max(0, channel - 60) for channel in color)
+    draw.line((0, 0, size[0], size[1]), fill=accent, width=12)
+    draw.rectangle([size[0] // 4, size[1] // 4, size[0] * 3 // 4, size[1] * 3 // 4], outline=accent, width=10)
+    image.save(path, format="JPEG", quality=95)
     timestamp = modified_at.timestamp()
     os.utime(path, (timestamp, timestamp))
 
@@ -61,6 +65,11 @@ def _configure_prodigi_api_key(monkeypatch) -> None:
     monkeypatch.setenv("PHOTO_ARCHIVIST_PRODIGI_API_KEY", "test-env-api-key")
 
 
+@pytest.fixture(autouse=True)
+def _force_stub_aesthetic(monkeypatch) -> None:
+    monkeypatch.setenv("PHOTO_ARCHIVIST_AESTHETIC_BACKEND", "stub")
+
+
 @pytest.mark.asyncio
 async def test_get_root_renders_form() -> None:
     transport = ASGITransport(app=app)
@@ -101,7 +110,7 @@ async def test_post_scans_returns_polling_partial_and_results(tmp_path) -> None:
         scan_id = _extract_scan_id(html)
 
         result_html = None
-        for _ in range(10):
+        for _ in range(30):
             fragment = await client.get(f"/fragments/shortlist/{scan_id}")
             assert fragment.status_code == 200
             fragment_html = fragment.text
@@ -172,7 +181,7 @@ async def test_post_scans_without_htmx_returns_full_page(tmp_path) -> None:
 
         scan_id = _extract_scan_id(html)
 
-        for _ in range(10):
+        for _ in range(30):
             fragment = await client.get(f"/fragments/shortlist/{scan_id}")
             if "Top 1 photo" in fragment.text or "Top 1 photos" in fragment.text:
                 assert "bright.jpg" in fragment.text
@@ -203,7 +212,7 @@ async def test_toggle_selection_updates_html_and_json(tmp_path) -> None:
         assert post_response.status_code == 202
         scan_id = _extract_scan_id(post_response.text)
 
-        for _ in range(10):
+        for _ in range(30):
             fragment = await client.get(f"/fragments/shortlist/{scan_id}")
             if "Top 1 photo" in fragment.text or "Top 1 photos" in fragment.text:
                 shortlist_html = fragment.text
@@ -260,7 +269,7 @@ async def test_api_scan_status_endpoint_returns_json(tmp_path) -> None:
         scan_id = payload["id"]
         assert payload["state"] in {"queued", "running"}
 
-        for _ in range(10):
+        for _ in range(30):
             status_response = await client.get(f"/api/scans/{scan_id}")
             assert status_response.status_code == 200
             status_payload = status_response.json()

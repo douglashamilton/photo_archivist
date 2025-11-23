@@ -563,15 +563,18 @@ def _build_context(
     results: list[Any] = []
     total_files = 0
     matched_files = 0
+    discarded_files = 0
 
     if status and status.state == ScanState.COMPLETE and outcome:
         results = outcome.results
         total_files = outcome.total_files
         matched_files = outcome.matched_files
+        discarded_files = getattr(outcome, "discarded_files", 0)
     elif outcome:
         results = outcome.results
         total_files = outcome.total_files
         matched_files = outcome.matched_files
+        discarded_files = getattr(outcome, "discarded_files", 0)
     elif status:
         total_files = status.total
         matched_files = status.matched
@@ -586,7 +589,7 @@ def _build_context(
         "request": request,
         "page_title": "Photo Archivist",
         "results": results,
-        "summary": {"total": total_files, "matched": matched_files},
+        "summary": {"total": total_files, "matched": matched_files, "discarded": discarded_files},
         "errors": errors,
         "scan_attempted": scan_attempted,
         "form_values": form_values,
@@ -616,6 +619,11 @@ def _serialize_status(status: Optional[ScanStatus], outcome: Optional[ScanOutcom
                 "metrics": photo.metrics,
                 "used_fallback": photo.used_fallback,
                 "path": str(photo.path),
+                "quality_status": photo.quality_status,
+                "quality_notes": photo.quality_notes,
+                "cluster_id": photo.cluster_id,
+                "cluster_size": photo.cluster_size,
+                "cluster_rank": photo.cluster_rank,
                 "thumbnail_url": f"/api/thumbnails/{status.id}/{photo.id}" if photo.thumbnail_path else None,
                 "thumbnail_generated_at": photo.thumbnail_generated_at.isoformat()
                 if photo.thumbnail_generated_at is not None
@@ -634,7 +642,11 @@ def _serialize_status(status: Optional[ScanStatus], outcome: Optional[ScanOutcom
         "processed": status.processed,
         "total": status.total,
         "matched": status.matched,
-        "summary": {"total_files": total_files, "matched_files": matched_files},
+        "summary": {
+            "total_files": total_files,
+            "matched_files": matched_files,
+            "discarded_files": outcome.discarded_files if outcome else 0,
+        },
         "message": status.message,
         "results": results_payload,
         "requested_at": status.requested_at.isoformat(),
