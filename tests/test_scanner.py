@@ -187,6 +187,19 @@ def test_quality_gate_drops_dark_frames(tmp_path):
     assert outcome.results[0].quality_status in {"keep", "soft"}
 
 
+def test_quality_gate_demotes_dim_frames(tmp_path):
+    dim_path = tmp_path / "dim.jpg"
+
+    _create_image(dim_path, (45, 45, 45), datetime(2024, 1, 10, tzinfo=timezone.utc))
+
+    gate = BasicQualityGate(brightness_drop=30.0, brightness_soft=50.0)
+    with Image.open(dim_path) as image:
+        assessment = gate.evaluate(image)
+
+    assert assessment.status == "soft"
+    assert "dim" in assessment.notes
+
+
 def test_phash_clusterer_keeps_top_two_per_burst(tmp_path):
     primary = tmp_path / "primary.jpg"
     alt_one = tmp_path / "alt_one.jpg"

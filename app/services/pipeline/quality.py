@@ -50,7 +50,8 @@ class BasicQualityGate(QualityGate):
             notes.append("dim")
 
         if contrast < self.contrast_drop:
-            status = "drop"
+            if status != "drop":
+                status = "soft"
             notes.append("low-contrast")
 
         if sharpness < self.blur_drop:
@@ -68,6 +69,9 @@ class BasicQualityGate(QualityGate):
         if aspect_ratio and (aspect_ratio < self.min_aspect or aspect_ratio > self.max_aspect):
             status = "drop"
             notes.append("extreme-aspect")
+
+        if status == "keep" and any(flag in notes for flag in ("dim", "soft")):
+            status = "soft"
 
         quality_score = sharpness + (brightness * 0.1) + (contrast * 0.1)
         if "dim" in notes:
