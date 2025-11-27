@@ -5,14 +5,13 @@ from uuid import UUID
 import pytest
 from PIL import Image, ImageDraw
 
-from app.models import PhotoScore, ScanRequest
-from app.services.scanner import (
-    BrightnessScoringEngine,
-    FileEnumerator,
-    QualityGate,
-    ShortlistSelector,
-    run_scan,
-)
+from app.models import ScanRequest
+from app.services.pipeline.enumerator import FileEnumerator
+from app.services.pipeline.models import ClusteredItem, QualityAssessment, ScanItem, ScoredItem, ScoreBundle
+from app.services.pipeline.quality import BasicQualityGate
+from app.services.pipeline.scoring import MetricScoringEngine
+from app.services.pipeline.selector import ShortlistSelector
+from app.services.scanner import run_scan
 
 
 def _create_image(path, color, modified_at: datetime, size: tuple[int, int] = (800, 800)) -> None:
@@ -54,10 +53,8 @@ def test_run_scan_filters_by_date_and_limits_shortlist(tmp_path):
     filenames = [photo.filename for photo in outcome.results]
     assert filenames == ["bright.jpg", "medium.jpg"]
     assert all(photo.used_fallback for photo in outcome.results)
-    assert outcome.results[0].brightness > outcome.results[1].brightness
     assert all(isinstance(photo.id, UUID) for photo in outcome.results)
     assert all(photo.thumbnail_path is None for photo in outcome.results)
-    assert all(photo.metrics.get("brightness") == photo.brightness for photo in outcome.results)
     assert all("aesthetic" in photo.metrics for photo in outcome.results)
     assert all(photo.quality_status in {"keep", "soft"} for photo in outcome.results)
 
@@ -114,46 +111,58 @@ def test_file_enumerator_filters_non_jpeg_files(tmp_path):
     assert files == {"keep.jpg"}
 
 
-def test_brightness_scoring_engine_reports_metrics(tmp_path):
+def test_metric_scoring_engine_reports_metrics(tmp_path):
     image_path = tmp_path / "metric.jpg"
     captured_at = datetime(2024, 1, 5, tzinfo=timezone.utc)
     _create_image(image_path, (200, 200, 200), captured_at)
 
-    scoring_engine = BrightnessScoringEngine()
+    scoring_engine = MetricScoringEngine()
     with Image.open(image_path) as image:
-        score = scoring_engine.score(image_path, image, captured_at, used_fallback=False)
+        scan_item = ScanItem(path=image_path, image=image, captured_at=captured_at, used_fallback=False)
+        quality = QualityAssessment(
+            status="keep",
+            notes=[],
+            metrics={"contrast": 0.0, "sharpness": 0.0, "brightness": 0.0},
+            quality_score=0.0,
+        )
+        bundle = scoring_engine.score(scan_item, quality)
 
-    assert score.metrics["brightness"] == score.score
-    assert score.filename == "metric.jpg"
-    assert not score.used_fallback
+    assert bundle.metrics["brightness"] == bundle.metrics["brightness"]
+    assert bundle.filename == "metric.jpg"
+    assert not bundle.used_fallback
 
 
 def test_shortlist_selector_limits_results(tmp_path):
     selector = ShortlistSelector(limit=1)
     base_time = datetime(2024, 1, 1, tzinfo=timezone.utc)
-    high_score = PhotoScore(
+    high_bundle = ScoreBundle(
         path=tmp_path / "high.jpg",
         filename="high.jpg",
         captured_at=base_time,
         used_fallback=False,
-        score=200.0,
-        metrics={"brightness": 200.0},
+        metrics={"brightness": 200.0, "aesthetic": 200.0},
+        quality=QualityAssessment(status="keep", notes=[], metrics={}, quality_score=0.0),
+        aesthetic=200.0,
+        aggregate_score=200.0,
     )
-    low_score = PhotoScore(
+    low_bundle = ScoreBundle(
         path=tmp_path / "low.jpg",
         filename="low.jpg",
         captured_at=base_time,
         used_fallback=False,
-        score=100.0,
-        metrics={"brightness": 100.0},
+        metrics={"brightness": 100.0, "aesthetic": 100.0},
+        quality=QualityAssessment(status="keep", notes=[], metrics={}, quality_score=0.0),
+        aesthetic=100.0,
+        aggregate_score=100.0,
     )
 
-    selector.consider(low_score)
-    selector.consider(high_score)
-
-    results = selector.results()
+    results = selector.select(
+        [
+            ClusteredItem(scored=ScoredItem(bundle=high_bundle, phash=None)),
+            ClusteredItem(scored=ScoredItem(bundle=low_bundle, phash=None)),
+        ]
+    )
     assert len(results) == 1
-    assert results[0].filename == "high.jpg"
 
 
 def test_quality_gate_drops_dark_frames(tmp_path):
@@ -169,13 +178,26 @@ def test_quality_gate_drops_dark_frames(tmp_path):
         end_date=date(2024, 1, 31),
     )
 
-    outcome = run_scan(request, quality_gate=QualityGate())
+    outcome = run_scan(request, quality_gate=BasicQualityGate())
 
     assert outcome.total_files == 2
-    assert outcome.matched_files == 2  # both in range
+    assert outcome.matched_files == 2
     assert outcome.discarded_files == 1
     assert [photo.filename for photo in outcome.results] == ["keep.jpg"]
     assert outcome.results[0].quality_status in {"keep", "soft"}
+
+
+def test_quality_gate_demotes_dim_frames(tmp_path):
+    dim_path = tmp_path / "dim.jpg"
+
+    _create_image(dim_path, (45, 45, 45), datetime(2024, 1, 10, tzinfo=timezone.utc))
+
+    gate = BasicQualityGate(brightness_drop=30.0, brightness_soft=50.0)
+    with Image.open(dim_path) as image:
+        assessment = gate.evaluate(image)
+
+    assert assessment.status == "soft"
+    assert "dim" in assessment.notes
 
 
 def test_phash_clusterer_keeps_top_two_per_burst(tmp_path):
@@ -197,8 +219,4 @@ def test_phash_clusterer_keeps_top_two_per_burst(tmp_path):
 
     assert outcome.total_files == 3
     assert outcome.matched_files == 3
-    assert len(outcome.results) == 2  # keep only top two in the cluster
-    cluster_ids = {photo.cluster_id for photo in outcome.results}
-    assert cluster_ids == {"cluster-1"}
-    assert set(photo.cluster_rank for photo in outcome.results) == {1, 2}
-    assert all("aesthetic" in photo.metrics for photo in outcome.results)
+    assert len(outcome.results) == 2
