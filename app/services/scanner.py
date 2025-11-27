@@ -4,7 +4,7 @@ import json
 import logging
 from datetime import date, datetime
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Sequence
 
 from PIL import Image, UnidentifiedImageError
 
@@ -37,7 +37,7 @@ def run_scan(
     *,
     config: Optional[ScanConfig] = None,
     enumerator: Optional[Enumerator] = None,
-    metadata_resolver: Optional[MetadataResolverProtocol] = None,
+    metadata_resolver: Optional[MetadataResolver] = None,
     scoring_engine: Optional[ScoringEngine] = None,
     selector: Optional[Selector] = None,
     quality_gate: Optional[QualityGate] = None,
@@ -145,14 +145,14 @@ def _process_image(
     image_path: Path,
     start_date: date,
     end_date: date,
-    metadata_resolver: MetadataResolverProtocol,
+    metadata_resolver: MetadataResolver,
     quality_gate: QualityGate,
     hasher: Hasher,
     scoring_engine: ScoringEngine,
 ) -> ScoredItem | bool | None:
     with Image.open(image_path) as image:
+        captured_at, used_fallback = metadata_resolver.resolve(image_path, image)
         working_image = image.convert("RGB")
-        captured_at, used_fallback = metadata_resolver.resolve(image_path, working_image)
         if not _is_within_range(captured_at, start_date, end_date):
             return None
 
@@ -172,10 +172,10 @@ def _process_image(
         return ScoredItem(bundle=bundle, phash=phash_value)
 
 
-def _to_photo_results(items: list[ClusteredItem]) -> list[PhotoResult]:
+def _to_photo_results(items: Sequence[ClusteredItem | ScoredItem]) -> list[PhotoResult]:
     results: list[PhotoResult] = []
     for idx, item in enumerate(items, start=1):
-        score_payload = to_photo_score(item)
+        score_payload: dict = to_photo_score(item)
         photo_score = PhotoScore(**score_payload)
         results.append(PhotoResult.from_score(photo_score))
     return results
