@@ -24,11 +24,12 @@ Review these folders and the relevant template before creating or updating an ar
 
 ## Development Practices
 - Work in small, reviewable increments tied to a slice plan.
-- Fold bug fixes into the latest slice so that each slice is a complete, **working**, feature. 
+- Fold bug fixes into the latest slice so that each slice is a complete, **working**, feature.
 - Keep scope tight; raise follow-up tasks for broader refactors.
 - Maintain or add automated tests that prove the change.
 - Run the relevant test suites before sharing work. If no suite exists, document the chosen manual verification in the build log.
 - Ensure any generated or transient files are covered by `.gitignore`.
+- Use the WSL-specific virtual environment at `.venv-wsl` when working inside the Linux sandbox, and keep `requirements.txt` in sync with `pyproject.toml` so that both `.venv-wsl` and the Windows `.venv` stay aligned.
 
 ## Collaboration & PRs
 - Summarise user-facing and technical changes, referencing the PRD/TDD or slice plan sections that guided decisions.
