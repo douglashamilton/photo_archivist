@@ -10,7 +10,7 @@ Use this prompt in VS Code's Codex/Continue chat to recreate clean, in-sync virt
 - Point VS Code at the Windows `.venv` interpreter and keep `requirements.txt` updated when dependencies change.
 
 ## Prompt
-"""
+""" 
 You are running inside VS Code. Clean up and recreate the Python virtual environments for this workspace:
 
 1) Open an integrated terminal at the repository root.
@@ -23,5 +23,5 @@ You are running inside VS Code. Clean up and recreate the Python virtual environ
 6) In VS Code, set the Python interpreter to `.venv\\Scripts\\python.exe` so tooling uses the Windows environment by default.
 7) Confirm `requirements.txt` stays aligned with `pyproject.toml` whenever dependencies change.
 
-Share the terminal output once finished.
+Share the terminal output once finished. 
 """

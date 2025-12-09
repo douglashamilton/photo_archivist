@@ -17,7 +17,7 @@ Each slice must finish with automated tests plus a manual verification note for 
 ## Repo Tour
 - `prompts/` - step-by-step playbooks. Start here.
 - `templates/` - PRD, TDD, and slice-plan templates.
-- `docs/` - live artefacts (`prd.md`, `tdd.md`, `build-log.md`, `slices/`).
+- `docs/` - live artefacts (`prd.md`, `tdd.md`, `build-log.md`, `slices/`, `apis/`).
 - `docs/apis/` - API documentation, static. 
 
 Review these folders and the relevant template before creating or updating an artefact.
